@@ -1,0 +1,634 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+/* ─── Design Tokens ───────────────────────────────────────────── */
+:root {
+  /* Deep space dark palette */
+  --bg-primary:    #030711;
+  --bg-secondary:  #080f1f;
+  --bg-card:       #0b1428;
+  --bg-glass:      rgba(8, 15, 31, 0.75);
+  --bg-glass-2:    rgba(255, 255, 255, 0.03);
+
+  --border-color:  rgba(100, 160, 255, 0.1);
+  --border-bright: rgba(100, 160, 255, 0.25);
+
+  --text-primary:   #e8f0ff;
+  --text-secondary: #7b9bc0;
+  --text-muted:     #3d5a7a;
+
+  --title-gradient-start: #e8f0ff;
+  --title-gradient-end:   #8ab4ff;
+
+  /* Modern fintech accent palette (Blue, Teal, Cyan - NO PURPLE OR PINK) */
+  --accent:         #4f8fff;
+  --accent-2:       #0fbcb0;
+  --accent-cyan:    #00e5ff;
+  --accent-gold:    #fbbf24;
+  --accent-glow:    rgba(79, 143, 255, 0.22);
+  --accent-glow-2:  rgba(15, 188, 176, 0.20);
+
+  --success:  #00e887;
+  --warning:  #ffb347;
+  --danger:   #ff4d6d;
+
+  --shadow-sm:   0 1px 4px rgba(0, 0, 0, 0.6);
+  --shadow-md:   0 4px 20px rgba(0, 0, 0, 0.6), 0 1px 4px rgba(0,0,0,0.4);
+  --shadow-lg:   0 16px 64px rgba(0, 0, 0, 0.7), 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-glow: 0 0 40px rgba(79, 143, 255, 0.25);
+  --shadow-glow-success: 0 0 30px rgba(0, 232, 135, 0.25);
+  --shadow-glow-danger:  0 0 30px rgba(255, 77, 109, 0.25);
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* 3D perspective */
+  --perspective: 1200px;
+  
+  --input-bg: rgba(255, 255, 255, 0.04);
+}
+
+/* ─── Light Mode Overrides ────────────────────────────────────── */
+:root:not(.dark) {
+  --bg-primary:    #f8fafc;
+  --bg-secondary:  #ffffff;
+  --bg-card:       #ffffff;
+  --bg-glass:      rgba(255, 255, 255, 0.85);
+  --bg-glass-2:    rgba(0, 0, 0, 0.03);
+
+  --border-color:  rgba(0, 0, 0, 0.08);
+  --border-bright: rgba(0, 0, 0, 0.15);
+
+  --text-primary:   #0f172a;
+  --text-secondary: #475569;
+  --text-muted:     #94a3b8;
+
+  --title-gradient-start: var(--text-primary);
+  --title-gradient-end:   var(--accent);
+
+  --accent:         #0284c7;
+  --accent-2:       #0d9488;
+  --accent-cyan:    #0ea5e9;
+  --accent-gold:    #d97706;
+
+  --success:        #059669;
+  --warning:        #d97706;
+  --danger:         #dc2626;
+
+  --input-bg:       rgba(0, 0, 0, 0.03);
+
+  --accent-glow:    rgba(2, 132, 199, 0.12);
+  --accent-glow-2:  rgba(13, 148, 136, 0.15);
+
+  --shadow-sm:   0 1px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md:   0 4px 20px rgba(0, 0, 0, 0.06), 0 1px 4px rgba(0,0,0,0.04);
+  --shadow-lg:   0 16px 64px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0,0,0,0.06);
+}
+
+/* ─── Base ──────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html {
+  scroll-behavior: smooth;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: 'Space Grotesk', system-ui, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── 3D Glass Card ─────────────────────────────────────────────── */
+.glass-card {
+  background: var(--bg-glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md), inset 0 1px 0 rgba(255,255,255,0.05);
+  transition: box-shadow var(--transition), transform var(--transition), border-color var(--transition);
+  position: relative;
+  overflow: hidden;
+}
+
+/* subtle shimmer line across top of card */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(79, 143, 255, 0.4), transparent);
+  pointer-events: none;
+}
+
+.glass-card:hover {
+  box-shadow: var(--shadow-lg), var(--shadow-glow);
+  border-color: var(--border-bright);
+  transform: translateY(-3px) scale(1.005);
+}
+
+/* ─── 3D card flip wrapper ─────────────────────────────────────── */
+.card-3d-wrapper {
+  perspective: var(--perspective);
+}
+.card-3d {
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.card-3d:hover {
+  transform: rotateY(4deg) rotateX(2deg);
+}
+
+/* ─── Button variants ───────────────────────────────────────────── */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--accent), var(--accent-2));
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+  box-shadow: 0 4px 20px var(--accent-glow), 0 0 0 0 var(--accent);
+  position: relative;
+  overflow: hidden;
+}
+.btn-primary::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+.btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 32px var(--accent-glow), 0 0 0 1px var(--accent);
+}
+.btn-primary:hover::after { opacity: 1; }
+.btn-primary:active { transform: translateY(0); }
+.btn-primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--bg-glass-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-ghost:hover {
+  background: rgba(79, 143, 255, 0.08);
+  color: var(--text-primary);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* ─── Danger / success button ──────────────────────────────────── */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: linear-gradient(135deg, rgba(255,77,109,0.2), rgba(255,77,109,0.1));
+  color: var(--danger);
+  border: 1px solid rgba(255,77,109,0.4);
+  border-radius: var(--radius-md);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+.btn-danger:hover {
+  background: rgba(255,77,109,0.25);
+  box-shadow: 0 0 20px rgba(255,77,109,0.3);
+}
+
+/* ─── Form inputs ───────────────────────────────────────────────── */
+.input-field {
+  width: 100%;
+  padding: 12px 16px;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px;
+  transition: border-color var(--transition), box-shadow var(--transition), background var(--transition);
+  outline: none;
+}
+.input-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(79, 143, 255, 0.18), inset 0 1px 0 rgba(79,143,255,0.1);
+  background: rgba(79, 143, 255, 0.05);
+}
+.input-field::placeholder { color: var(--text-muted); }
+
+.input-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Risk color classes ────────────────────────────────────────── */
+.risk-low    { color: var(--success); }
+.risk-medium { color: var(--warning); }
+.risk-high   { color: var(--danger); }
+.bg-risk-low    { background: rgba(0, 232, 135, 0.08); border-color: rgba(0, 232, 135, 0.25); }
+.bg-risk-medium { background: rgba(255, 179, 71, 0.08); border-color: rgba(255, 179, 71, 0.25); }
+.bg-risk-high   { background: rgba(255, 77, 109,  0.08); border-color: rgba(255, 77, 109, 0.25); }
+
+/* ─── Page layout ───────────────────────────────────────────────── */
+.page-wrapper {
+  min-height: 100vh;
+  background: var(--bg-primary);
+  display: flex;
+  flex-direction: column;
+}
+.main-content {
+  flex: 1;
+  padding: 28px 24px;
+  max-width: 1320px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ─── Background — layered deep-space mesh ──────────────────────── */
+.gradient-mesh {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* Large blue nebula top-left */
+.gradient-mesh::before {
+  content: '';
+  position: absolute;
+  top: -25%;
+  left: -15%;
+  width: 70%;
+  height: 70%;
+  background: radial-gradient(ellipse at center,
+    rgba(79, 143, 255, 0.12) 0%,
+    rgba(79, 143, 255, 0.04) 45%,
+    transparent 70%
+  );
+  animation: float-blob 14s ease-in-out infinite alternate;
+}
+
+/* Teal/Cyan nebula bottom-right */
+.gradient-mesh::after {
+  content: '';
+  position: absolute;
+  bottom: -20%;
+  right: -10%;
+  width: 65%;
+  height: 65%;
+  background: radial-gradient(ellipse at center,
+    rgba(15, 188, 176, 0.12) 0%,
+    rgba(0, 229, 255, 0.05) 50%,
+    transparent 70%
+  );
+  animation: float-blob 18s ease-in-out infinite alternate-reverse;
+}
+
+/* Extra grid overlay for premium depth */
+.gradient-mesh-grid {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(79,143,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,143,255,0.03) 1px, transparent 1px);
+  background-size: 60px 60px;
+  mask-image: radial-gradient(ellipse at 50% 0%, black 30%, transparent 80%);
+}
+
+@keyframes float-blob {
+  0%   { transform: translate(0, 0) scale(1) rotate(0deg); }
+  50%  { transform: translate(2%, 3%) scale(1.05) rotate(1deg); }
+  100% { transform: translate(-2%, -1%) scale(1.08) rotate(-1deg); }
+}
+
+/* ─── Animated gradient border ──────────────────────────────────── */
+.gradient-border {
+  position: relative;
+  border-radius: var(--radius-lg);
+  background: var(--bg-glass);
+}
+.gradient-border::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    var(--accent),
+    var(--accent-2),
+    var(--accent-cyan),
+    var(--accent)
+  );
+  background-size: 300% 300%;
+  animation: gradient-shift 5s ease infinite;
+  z-index: -1;
+  opacity: 0.7;
+}
+@keyframes gradient-shift {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* ─── Neon pulse glow ───────────────────────────────────────────── */
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 10px var(--accent-glow); }
+  50%       { box-shadow: 0 0 30px var(--accent-glow), 0 0 60px var(--accent-glow); }
+}
+.pulse-glow { animation: pulse-glow 2.5s ease-in-out infinite; }
+
+@keyframes pulse-glow-success {
+  0%, 100% { box-shadow: 0 0 10px rgba(0,232,135,0.2); }
+  50%       { box-shadow: 0 0 30px rgba(0,232,135,0.4), 0 0 60px rgba(0,232,135,0.2); }
+}
+.pulse-glow-success { animation: pulse-glow-success 2.5s ease-in-out infinite; }
+
+/* ─── Spin animations ───────────────────────────────────────────── */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.spin-slow { animation: spin-slow 2s linear infinite; }
+
+/* ─── Telegram waiting dots ─────────────────────────────────────── */
+@keyframes dot-bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40%            { transform: scale(1.2); opacity: 1; }
+}
+.dot-1 { animation: dot-bounce 1.4s ease-in-out infinite; }
+.dot-2 { animation: dot-bounce 1.4s ease-in-out 0.2s infinite; }
+.dot-3 { animation: dot-bounce 1.4s ease-in-out 0.4s infinite; }
+
+/* ─── Number counter flash ──────────────────────────────────────── */
+@keyframes count-flash {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
+/* ─── Shimmer loading skeleton ──────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-secondary) 25%,
+    rgba(79, 143, 255, 0.06) 50%,
+    var(--bg-secondary) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(79, 143, 255, 0.2);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(79, 143, 255, 0.4); }
+
+/* ─── Badge ─────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.badge-success { background: rgba(0,232,135,0.12);  color: var(--success); border: 1px solid rgba(0,232,135,0.25); }
+.badge-warning { background: rgba(255,179,71,0.12);  color: var(--warning); border: 1px solid rgba(255,179,71,0.25); }
+.badge-danger  { background: rgba(255,77,109,0.12);  color: var(--danger);  border: 1px solid rgba(255,77,109,0.25); }
+.badge-info    { background: var(--accent-glow);      color: var(--accent);  border: 1px solid rgba(79,143,255,0.3); }
+
+/* ─── Code / mono ───────────────────────────────────────────────── */
+code, .mono {
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 0.88em;
+  background: rgba(79, 143, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: var(--accent-cyan);
+}
+
+/* ─── Section heading ───────────────────────────────────────────── */
+.section-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: -0.03em;
+  background: linear-gradient(135deg, var(--title-gradient-start) 0%, var(--title-gradient-end) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+.section-sub {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 5px;
+  font-weight: 400;
+}
+
+/* ─── Neon data chip ────────────────────────────────────────────── */
+.data-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: rgba(79, 143, 255, 0.07);
+  border: 1px solid rgba(79, 143, 255, 0.18);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+/* ─── 3D Info field card ────────────────────────────────────────── */
+.info-field {
+  padding: 14px 16px;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+.info-field:hover {
+  border-color: var(--border-bright);
+  background: rgba(79, 143, 255, 0.05);
+  transform: translateZ(4px);
+}
+
+/* ─── Payment card 3D visual ────────────────────────────────────── */
+.payment-card-3d {
+  background: linear-gradient(135deg,
+    rgba(79, 143, 255, 0.25) 0%,
+    rgba(15, 188, 176, 0.25) 50%,
+    rgba(0, 229, 255, 0.15) 100%
+  ), #0b1428;
+  border: 1px solid rgba(79, 143, 255, 0.3);
+  border-radius: 20px;
+  padding: 28px;
+  position: relative;
+  overflow: hidden;
+  transform-style: preserve-3d;
+  transform: perspective(1000px) rotateX(2deg);
+  transition: transform 0.3s ease;
+  box-shadow:
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(79, 143, 255, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+.payment-card-3d::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: conic-gradient(
+    from 180deg,
+    transparent 60%,
+    rgba(79, 143, 255, 0.06) 70%,
+    transparent 80%
+  );
+  animation: rotate-shine 8s linear infinite;
+}
+@keyframes rotate-shine {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.payment-card-3d:hover {
+  transform: perspective(1000px) rotateX(0deg) rotateY(3deg) scale(1.01);
+}
+
+/* ─── Telegram notification box ─────────────────────────────────── */
+.telegram-box {
+  background: linear-gradient(135deg,
+    rgba(37, 150, 210, 0.15),
+    rgba(0, 136, 204, 0.08)
+  );
+  border: 1px solid rgba(37, 150, 210, 0.35);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.telegram-box::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  background: linear-gradient(135deg,
+    rgba(37, 150, 210, 0.3),
+    rgba(0, 229, 255, 0.15),
+    rgba(37, 150, 210, 0.3)
+  );
+  background-size: 200% 200%;
+  animation: gradient-shift 3s ease infinite;
+  z-index: 0;
+  opacity: 0.5;
+}
+.telegram-box > * { position: relative; z-index: 1; }
+
+/* ─── OCR extracted field row ───────────────────────────────────── */
+.ocr-field-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  transition: all var(--transition);
+}
+.ocr-field-row:hover {
+  background: rgba(79, 143, 255, 0.06);
+  border-color: var(--border-bright);
+}
+.ocr-field-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  min-width: 80px;
+  padding-top: 2px;
+}
+.ocr-field-value {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-family: 'Space Grotesk', sans-serif;
+  flex: 1;
+}
+
+/* ─── Stat number ───────────────────────────────────────────────── */
+.stat-number {
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+  background: linear-gradient(135deg, #e8f0ff, #4f8fff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Neon horizontal divider ───────────────────────────────────── */
+.neon-divider {
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    rgba(79, 143, 255, 0.3) 30%,
+    rgba(79, 143, 255, 0.3) 70%,
+    transparent
+  );
+  margin: 16px 0;
+}

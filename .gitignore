@@ -1,0 +1,70 @@
+# Environment & Secrets
+.env
+.env.local
+.env.*.local
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+venv/
+.venv/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# Node / Frontend
+node_modules/
+.next/
+*.tsbuildinfo
+
+# Logs
+*.log
+
+# ============================================================
+# DOCS, PPTs, PDFs - Don't push these
+# ============================================================
+*.docx
+*.doc
+*.pdf
+*.pptx
+*.ppt
+arch_content.txt
+lit_survey_dump.txt
+lit_survey_full.txt
+
+# Temp/backup files
+~$*
+page_backup.tsx
+*.mp4
+
+# ============================================================
+# DATASETS - Too large, use download links in README
+# ============================================================
+DATASETS MAJOR PROJECT/
+"DATASETS MAJOR PROJECT.zip"
+*.zip
+gpteacher_cleaned_filtered_telugu_romanized.csv
+
+# ============================================================
+# Models - Git LFS handles .pt, .pkl, .h5
+# (tracked via .gitattributes - do NOT ignore them here)
+# ============================================================
+
+# OCR / temp outputs
+ocr_response.json
+Multimodal_Risk_Assessment_Workflow
+gantt_chart.png
+
+# Archive / old versions
+archive_v1/
+_abstract_review/
+finpay-login/
+
+# Roboflow zip
+"Back Aadhaar Card.v2i.coco.zip"

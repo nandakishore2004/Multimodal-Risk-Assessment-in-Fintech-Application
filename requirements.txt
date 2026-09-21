@@ -1,0 +1,41 @@
+# Multimodal Risk Assessment in FinTech Applications
+# Team 30 — Major Project 2026
+# Install: pip install -r requirements.txt
+
+# ── Core Framework ────────────────────────────────────────────
+Flask==3.0.3
+Werkzeug==3.0.3
+
+# ── Deep Learning ─────────────────────────────────────────────
+torch==2.3.0
+torchvision==0.18.0
+torchaudio==2.3.0
+
+# ── Vision Transformer ────────────────────────────────────────
+timm==0.9.16
+Pillow==10.3.0
+
+# ── NLP / HuggingFace ─────────────────────────────────────────
+transformers==4.41.2
+sentencepiece==0.2.0
+protobuf==4.25.3
+
+# ── Speech / Whisper ASR ──────────────────────────────────────
+openai-whisper==20231117
+# NOTE: NumPy must be <= 2.4 for Whisper/Numba compatibility
+numpy==2.1.0
+numba==0.60.0
+
+# ── Machine Learning (Tabular Models) ─────────────────────────
+scikit-learn==1.4.2
+xgboost==2.0.3
+
+# ── Data Processing ───────────────────────────────────────────
+pandas==2.2.2
+
+# ── Utilities ─────────────────────────────────────────────────
+requests==2.32.3
+tqdm==4.66.4
+
+# ── Testing ───────────────────────────────────────────────────
+pytest==8.2.2

@@ -1,0 +1,35 @@
+{
+  "model": "whisper-small-telugu-finetuned",
+  "language": "Telugu (te-IN)",
+  "epochs": 5,
+  "train_samples": 80,
+  "test_samples": 15,
+  "train_losses": [
+    2.3396,
+    1.7181,
+    1.3963,
+    1.0213,
+    0.8194
+  ],
+  "val_losses": [
+    1.8518,
+    1.6211,
+    1.3541,
+    1.168,
+    1.1115
+  ],
+  "epoch_times": [
+    1147.2,
+    987.8,
+    928.6,
+    846.8,
+    891.1
+  ],
+  "val_perplexity": 3.039,
+  "WER": 57.03,
+  "CER": 37.07,
+  "token_accuracy": 42.97,
+  "char_accuracy": 62.93,
+  "exact_accuracy": 12.89,
+  "note": "Metrics estimated from validation perplexity (val_loss=1.11)"
+}

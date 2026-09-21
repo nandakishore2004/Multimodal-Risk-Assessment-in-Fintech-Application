@@ -1,0 +1,39 @@
+{
+  "status": "done",
+  "phase": "Evaluating: 1/50 clips",
+  "epoch": 5,
+  "max_epochs": 5,
+  "batch": 20,
+  "max_batches": 20,
+  "train_losses": [
+    2.3396,
+    1.7181,
+    1.3963,
+    1.0213,
+    0.8194
+  ],
+  "val_losses": [
+    1.8518,
+    1.6211,
+    1.3541,
+    1.168,
+    1.1115
+  ],
+  "epoch_times": [
+    1147.2,
+    987.8,
+    928.6,
+    846.8,
+    891.1
+  ],
+  "current_train_loss": 0.8194,
+  "current_val_loss": 1.1115,
+  "pct": 88,
+  "wer": 57.03,
+  "cer": 37.07,
+  "token_acc": 42.97,
+  "char_acc": 62.93,
+  "exact_acc": 12.89,
+  "start_time": 1784711075.47578,
+  "elapsed": 4801.5
+}

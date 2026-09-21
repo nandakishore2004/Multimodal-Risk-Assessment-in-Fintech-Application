@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NeoRisk Lending — Multimodal Loan Assessment</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+</head>
+<body class="fintech-app">
+
+<div class="login-overlay" id="login-overlay">
+  <form class="login-card" onsubmit="loginUser(event)">
+    <div class="login-mark">🛡️</div><span class="eyebrow">NEORISK LENDING PORTAL</span>
+    <h1>Welcome back</h1><p>Sign in to start a secure loan assessment.</p>
+    <label>Email<input id="login-email" class="app-input" type="email" value="rahul@example.com" required></label>
+    <label>Password<input id="login-password" class="app-input" type="password" value="Loan@123" required></label>
+    <button class="btn-pay-now" type="submit">Sign in securely</button>
+    <small id="login-message">Demo login: rahul@example.com / Loan@123</small>
+  </form>
+</div>
+
+<!-- ── TOAST NOTIFICATIONS ──────────────────────────────────────── -->
+<div id="toast-container" aria-live="polite"></div>
+
+<!-- ── NAVBAR ─────────────────────────────────────────────────── -->
+<header class="app-header">
+  <div class="header-inner">
+    <div class="brand-group">
+      <div class="brand-logo">
+        <span class="logo-shield">🛡️</span>
+      </div>
+      <div class="brand-info">
+        <div class="brand-title">Neo<span>Risk</span> <span class="badge-web">LENDING</span></div>
+        <div class="brand-subtitle">Multimodal Loan Risk Assessment &bull; AI Decision Support</div>
+      </div>
+    </div>
+
+    <!-- Center: AI Security Shield Status -->
+    <div class="ai-shield-indicator" id="ai-shield-indicator" onclick="openInspector()">
+      <span class="shield-pulse"></span>
+      <span class="shield-icon">⚡</span>
+      <span class="shield-text">AI Guardian Active (4 Deep Models)</span>
+      <span class="shield-link">Inspect &rarr;</span>
+    </div>
+
+    <div class="mode-switch" aria-label="Application mode">
+      <button class="mode-button active" id="loan-mode-button" onclick="setAppMode('loan')">Loan Assessment</button>
+      <button class="mode-button" id="payment-mode-button" onclick="setAppMode('payment')">UPI Risk Demo</button>
+    </div>
+
+    <button class="theme-toggle" id="theme-toggle" type="button" onclick="toggleTheme()" aria-label="Switch color theme">☀️ <span>Light</span></button>
+
+    <!-- Right: User Profile -->
+    <div class="user-profile-header">
+      <div class="user-avatar">RS</div>
+      <div class="user-details">
+        <div class="user-name" id="header-user-name">Rahul Sharma</div>
+        <div class="user-upi" id="header-upi">rahul.sharma@oksbi</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN APP CONTAINER ─────────────────────────────────────── -->
+<section class="loan-workspace" id="loan-workspace">
+  <div class="loan-intro">
+    <div>
+      <span class="eyebrow">END TO END LOAN APPLICATION</span>
+      <h1>Apply with evidence, not guesswork.</h1>
+      <p>Affordability, repayment behaviour, relationship risk, KYC, Telugu voice and loan-purpose intent are evaluated in one explainable credit decision.</p>
+    </div>
+    <div class="loan-model-tags"><span>Financial Profile</span><span>Repayment Sequence</span><span>Reference Network</span><span>KYC + Voice</span></div>
+  </div>
+
+  <div class="loan-grid">
+    <form class="loan-form-card" id="loan-application-form" onsubmit="submitLoanApplication(event)">
+      <div class="box-header"><h2>Personal Loan Application</h2><p>Fill the profile below to receive a simulated lender decision.</p></div>
+      <div class="loan-form-section"><h3>Applicant and employment</h3>
+        <div class="field-grid two"><label>Full name<input id="loan-name" class="app-input" required value="Rahul Sharma"></label><label>Employment years<input id="loan-employment" class="app-input" type="number" min="0" step="0.5" required value="3"></label></div>
+      </div>
+      <div class="loan-form-section"><h3>Income and credit profile</h3>
+        <div class="field-grid two"><label>Monthly income (₹)<input id="loan-income" class="app-input" type="number" min="1" required value="65000"></label><label>Monthly EMIs / obligations (₹)<input id="loan-obligations" class="app-input" type="number" min="0" required value="8000"></label><label>Credit score (300–900)<input id="loan-credit-score" class="app-input" type="number" min="300" max="900" required value="760"></label><label>Missed EMIs in last 12 months<input id="loan-missed-emis" class="app-input" type="number" min="0" max="12" required value="0"></label></div>
+      </div>
+      <div class="loan-form-section"><h3>Loan requirement</h3>
+        <div class="field-grid two"><label>Loan amount (₹)<input id="loan-amount" class="app-input" type="number" min="10000" required value="300000"></label><label>Tenure<select id="loan-tenure" class="app-input"><option value="12">12 months</option><option value="24" selected>24 months</option><option value="36">36 months</option><option value="48">48 months</option><option value="60">60 months</option></select></label></div>
+        <label>Loan purpose / declaration<input id="loan-purpose" class="app-input" value="Home renovation and essential family expenses" placeholder="Explain why you need the loan"></label>
+      </div>
+      <div class="loan-form-section"><h3>Multimodal verification</h3>
+        <div class="field-grid two"><label>Reference-network risk (0–100)<input id="loan-network-risk" class="app-input" type="number" min="0" max="100" value="10"></label><div class="loan-voice-control"><span>Voice declaration (Telugu or English)</span><button class="btn-loan-voice" id="loan-voice-btn" type="button" onclick="toggleLoanVoice()">🎙️ Record declaration</button><small id="loan-voice-status">Optional: record a short confirmation.</small><input id="loan-voice" type="hidden"></div></div>
+        <div class="kyc-upload-panel"><div><strong>📄 KYC document upload</strong><p>Use your Aadhaar, PAN, Passport, or Driving Licence. Upload a clear front image with all corners visible; no blur, crop, glare, or edits.</p></div><button type="button" class="btn-loan-voice" onclick="document.getElementById('loan-kyc-file').click()">Upload KYC image</button><input id="loan-kyc-file" type="file" accept="image/png,image/jpeg,image/webp" hidden onchange="uploadLoanKyc(event)"><small id="loan-kyc-status">No document uploaded yet.</small><input id="loan-kyc-score" type="hidden"></div>
+      </div>
+      <div class="loan-scenarios"><span>Demo profiles:</span><button type="button" onclick="loadLoanScenario('strong')">Strong applicant</button><button type="button" onclick="loadLoanScenario('review')">Needs review</button><button type="button" class="danger" onclick="loadLoanScenario('risky')">High-risk application</button></div>
+      <button class="btn-pay-now loan-submit" type="submit"><span>🧠</span> Assess Loan Eligibility</button>
+      <p class="loan-disclaimer">Educational prototype only — a bank must perform consent-based verification before a real lending decision.</p>
+    </form>
+
+    <aside class="loan-result-card" id="loan-result-card" aria-live="polite">
+      <div class="result-empty" id="loan-result-empty"><div class="empty-icon">📋</div><h2>Decision dashboard</h2><p>Submit an application to view eligibility, risk evidence, and suitable lender recommendations.</p></div>
+      <div id="loan-result-content" style="display:none;"></div>
+    </aside>
+  </div>
+</section>
+
+<main class="app-main" id="payment-workspace" style="display:none;">
+  <div class="app-layout">
+
+    <!-- ── LEFT: PAYMENT PORTAL ───────────────────────────────── -->
+    <section class="payment-card-container">
+      <div class="payment-box">
+        <div class="box-header">
+          <h2>Send Money via UPI</h2>
+          <p>Transfer instantly to any bank account or UPI ID</p>
+        </div>
+
+        <!-- 1. Select / Enter Payee -->
+        <div class="form-section">
+          <label class="section-label">Payee / Recipient</label>
+          
+          <!-- Quick Contacts Selector -->
+          <div class="quick-payees-list" id="quick-payees">
+            <div class="payee-chip selected" onclick="selectPayee('ananya@okhdfcbank', 'Ananya Verma', 'friend')">
+              <div class="payee-avatar friend">AV</div>
+              <div class="payee-meta">
+                <div class="payee-name">Ananya Verma</div>
+                <div class="payee-upi">ananya@okhdfcbank</div>
+              </div>
+              <span class="verified-tag">✓ Verified</span>
+            </div>
+
+            <div class="payee-chip" onclick="selectPayee('electricity@bescom', 'BESCOM Electricity Bill', 'merchant')">
+              <div class="payee-avatar merchant">⚡</div>
+              <div class="payee-meta">
+                <div class="payee-name">BESCOM Bill</div>
+                <div class="payee-upi">electricity@bescom</div>
+              </div>
+              <span class="verified-tag">✓ Utility</span>
+            </div>
+
+            <div class="payee-chip alert" onclick="selectPayee('lottery_claim_99@upi', 'KBC Lottery Support', 'scammer')">
+              <div class="payee-avatar scam">⚠️</div>
+              <div class="payee-meta">
+                <div class="payee-name">Lottery Prize Claim</div>
+                <div class="payee-upi">lottery_claim_99@upi</div>
+              </div>
+              <span class="flag-tag">New Payee</span>
+            </div>
+          </div>
+
+          <!-- Custom Payee Input -->
+          <div class="input-with-icon">
+            <span class="input-icon">👤</span>
+            <input type="text" id="payee-input" class="app-input" 
+                   value="ananya@okhdfcbank" 
+                   placeholder="Enter UPI ID, Phone Number, or Account">
+          </div>
+        </div>
+
+        <!-- 2. Enter Amount -->
+        <div class="form-section">
+          <label class="section-label">Enter Amount</label>
+          <div class="amount-input-wrap">
+            <span class="currency-symbol">₹</span>
+            <input type="number" id="pay-amount" class="amount-input" value="1200" placeholder="0" min="1">
+          </div>
+
+          <!-- Quick Amount Chips -->
+          <div class="quick-amounts">
+            <button type="button" class="amount-chip" onclick="setAmount(200)">+₹200</button>
+            <button type="button" class="amount-chip" onclick="setAmount(1200)">+₹1,200</button>
+            <button type="button" class="amount-chip" onclick="setAmount(5000)">+₹5,000</button>
+            <button type="button" class="amount-chip danger" onclick="setAmount(50000)">+₹50,000 (Max Drain)</button>
+          </div>
+        </div>
+
+        <!-- 3. Add Note / Reason (Natural NLP Input for DeBERTa-v3) -->
+        <div class="form-section">
+          <label class="section-label">Add a Note (Purpose of Payment)</label>
+          <div class="input-with-icon">
+            <span class="input-icon">📝</span>
+            <input type="text" id="pay-note" class="app-input" 
+                   value="Dinner bill split from yesterday" 
+                   placeholder="e.g. Dinner, rent, or urgent lottery claim...">
+          </div>
+
+          <!-- Quick Note Presets -->
+          <div class="note-presets">
+            <span class="presets-title">Sample Scenarios:</span>
+            <button type="button" class="preset-tag success" onclick="setScenario('legit')">Normal: Dinner split</button>
+            <button type="button" class="preset-tag telugu" onclick="setScenario('telugu')">తెలుగు: అర్జెంట్ డబ్బు</button>
+            <button type="button" class="preset-tag danger" onclick="setScenario('fraud')">Phishing: Lottery OTP unblock</button>
+          </div>
+        </div>
+
+        <!-- 4. Real-time Security Authorizations (Voice & KYC) -->
+        <div class="security-accordion">
+          <div class="security-accordion-header">
+            <span>🛡️ Biometric &amp; Security Authorization</span>
+            <span class="badge-optional">Secured by Whisper + ViT</span>
+          </div>
+
+          <div class="security-accordion-body">
+            <!-- Voice Modality -->
+            <div class="auth-row">
+              <div class="auth-info">
+                <div class="auth-title">🎙️ Voice Confirmation (Whisper ASR)</div>
+                <div class="auth-desc">Speak in Telugu or English to authorize transaction</div>
+              </div>
+              <button type="button" class="btn-voice-auth" id="voice-auth-btn" onclick="toggleVoiceAuth()">
+                <span id="voice-btn-label">Record Voice</span>
+              </button>
+            </div>
+            
+            <div class="voice-feedback" id="voice-feedback" style="display:none;">
+              <canvas id="app-waveform" width="500" height="40"></canvas>
+              <div class="voice-transcript-text" id="voice-transcript-text"></div>
+            </div>
+
+            <!-- KYC / ID Card Modality -->
+            <div class="auth-row" style="margin-top: 12px;">
+              <div class="auth-info">
+                <div class="auth-title">📷 KYC ID Verification (ViT-B/16)</div>
+                <div class="auth-desc">Required for high-value or unverified beneficiaries</div>
+              </div>
+              <button type="button" class="btn-kyc-upload" id="kyc-upload-btn" onclick="document.getElementById('kyc-file').click()">
+                <span id="kyc-btn-label">Upload ID</span>
+              </button>
+              <input type="file" id="kyc-file" accept="image/*" style="display:none;" onchange="handleKYCUpload(event)">
+            </div>
+            <div class="kyc-preview-row" id="kyc-preview-row" style="display:none;">
+              <img id="kyc-thumb" class="kyc-thumb" src="" alt="KYC Thumbnail">
+              <span class="kyc-badge">✅ ID Attached for ViT Scanning</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. Pay Button -->
+        <div class="action-section">
+          <button type="button" class="btn-pay-now" id="pay-now-btn" onclick="executePayment()">
+            <span class="lock-icon">🔒</span>
+            <span id="pay-btn-text">PAY ₹1,200 NOW</span>
+          </button>
+          <div class="payment-disclaimer">
+            <span>⚡ Instant Bank Settlement</span> &bull; 
+            <span>🔒 256-bit Multi-Modal Neural Encryption</span>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ── RIGHT: BANK CARD & ACTIVITY LEDGER ─────────────────── -->
+    <aside class="banking-sidebar">
+      
+      <!-- Virtual SBI Debit Card -->
+      <div class="bank-card sbi-card">
+        <div class="card-chip-row">
+          <div class="emv-chip"></div>
+          <div class="card-type">RuPay Platinum</div>
+        </div>
+        <div class="card-balance-label">AVAILABLE BALANCE</div>
+        <div class="card-balance-val" id="wallet-balance">₹50,000.00</div>
+        <div class="card-footer">
+          <div class="card-holder-meta">
+            <div class="holder-name">RAHUL SHARMA</div>
+            <div class="card-number">•••• •••• •••• 4219</div>
+          </div>
+          <div class="bank-brand">SBI</div>
+        </div>
+      </div>
+
+      <!-- Quick Action Stats -->
+      <div class="safety-stats-card">
+        <div class="stat-header">
+          <span>🛡️ NeoRisk AI Shield Status</span>
+          <span class="live-dot"></span>
+        </div>
+        <div class="model-mini-grid">
+          <div class="mini-model-pill" title="Vision Transformer"><span class="dot green"></span> ViT-B/16</div>
+          <div class="mini-model-pill" title="NLP Intent Model"><span class="dot green"></span> DeBERTa-v3</div>
+          <div class="mini-model-pill" title="Tabular PaySim Model"><span class="dot green"></span> FT-Transformer</div>
+          <div class="mini-model-pill" title="Telugu Speech Model"><span class="dot green"></span> Whisper ASR</div>
+        </div>
+        <button class="btn-inspector-open" onclick="openInspector()">
+          🔍 Open AI Security Inspector
+        </button>
+      </div>
+
+      <!-- Recent Transactions Activity -->
+      <div class="recent-activity-card">
+        <div class="activity-header">
+          <h3>Recent Transactions</h3>
+          <span class="filter-text">Today</span>
+        </div>
+        <div class="activity-list" id="activity-list">
+          <div class="activity-item success">
+            <div class="act-icon">☕</div>
+            <div class="act-info">
+              <div class="act-title">Starbucks Cafe</div>
+              <div class="act-time">10:42 AM &bull; UPI Payment</div>
+            </div>
+            <div class="act-amount debit">-₹350.00</div>
+          </div>
+
+          <div class="activity-item success">
+            <div class="act-icon">💼</div>
+            <div class="act-info">
+              <div class="act-title">Salary Credited</div>
+              <div class="act-time">Yesterday &bull; NEFT Transfer</div>
+            </div>
+            <div class="act-amount credit">+₹65,000.00</div>
+          </div>
+
+          <div class="activity-item blocked">
+            <div class="act-icon">🛑</div>
+            <div class="act-info">
+              <div class="act-title">Phishing Scam Blocked</div>
+              <div class="act-time">Yesterday &bull; AI Shield Defense</div>
+            </div>
+            <div class="act-amount blocked">BLOCKED</div>
+          </div>
+        </div>
+      </div>
+
+    </aside>
+
+  </div>
+</main>
+
+<!-- ── PAYMENT RESULT MODAL (GPay / PhonePe Authentic Flow) ───── -->
+<div class="modal-overlay" id="payment-modal" style="display:none;">
+  <div class="result-card" id="result-card">
+
+    <!-- Success State -->
+    <div id="modal-success" style="display:none;">
+      <div class="result-animation-icon success">
+        <svg class="checkmark-svg" viewBox="0 0 52 52">
+          <circle class="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+          <path class="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+        </svg>
+      </div>
+      <h2 class="result-title text-success">Payment Successful!</h2>
+      <div class="result-amount" id="success-amount">₹1,200.00</div>
+      <div class="result-payee" id="success-payee">Paid to Ananya Verma</div>
+      
+      <div class="receipt-box">
+        <div class="receipt-row"><span>Transaction ID</span><span id="success-tx-id" class="mono">UPI/2026/...</span></div>
+        <div class="receipt-row"><span>Debited From</span><span>SBI Account •••• 4219</span></div>
+        <div class="receipt-row"><span>AI Risk Score</span><span class="text-success font-bold" id="success-risk-score">12 / 100 (Safe)</span></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-primary" onclick="closeModal()">Done</button>
+        <button class="btn-modal-secondary" onclick="viewAuditDetails()">🔍 View AI Security Audit</button>
+      </div>
+    </div>
+
+    <!-- Blocked Fraud State -->
+    <div id="modal-blocked" style="display:none;">
+      <div class="result-animation-icon blocked">
+        <div class="shield-block-icon">🛑</div>
+      </div>
+      <h2 class="result-title text-danger">Payment Blocked by AI Guardian</h2>
+      <div class="result-sub-alert">Potential Financial Cyber Threat Prevented</div>
+      <div class="result-amount danger" id="blocked-amount">₹50,000.00</div>
+      
+      <div class="threat-alert-box">
+        <div class="threat-title">⚠️ Threat Analysis Detected:</div>
+        <ul class="threat-list" id="blocked-reasons">
+          <li>Account Draining Pattern: Whole balance transferred to empty beneficiary.</li>
+          <li>NLP Phishing Intent: High-risk urgency keywords detected.</li>
+        </ul>
+      </div>
+
+      <div class="receipt-box">
+        <div class="receipt-row"><span>Target Account</span><span id="blocked-payee" class="mono">lottery_claim_99@upi</span></div>
+        <div class="receipt-row"><span>Your Funds</span><span class="text-success font-bold">100% Protected (No money debited)</span></div>
+        <div class="receipt-row"><span>Overall Risk Score</span><span class="text-danger font-bold" id="blocked-risk-score">84 / 100 (Critical)</span></div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-danger" onclick="closeModal()">Close &amp; Secure Account</button>
+        <button class="btn-modal-secondary" onclick="viewAuditDetails()">🔍 Inspect AI Model Tensors</button>
+      </div>
+    </div>
+
+    <!-- Flagged State -->
+    <div id="modal-flagged" style="display:none;">
+      <div class="result-animation-icon flagged">
+        <div class="shield-flag-icon">⚠️</div>
+      </div>
+      <h2 class="result-title text-warning">Secondary Review Required</h2>
+      <div class="result-sub-alert">Unusual activity detected. Bank verification needed.</div>
+      <div class="result-amount warning" id="flagged-amount">₹15,000.00</div>
+
+      <div class="threat-alert-box">
+        <div class="threat-title">⚠️ Suspicious Indicators:</div>
+        <ul class="threat-list" id="flagged-reasons"></ul>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn-modal-primary" onclick="closeModal()">Proceed with OTP</button>
+        <button class="btn-modal-secondary" onclick="viewAuditDetails()">🔍 View AI Audit</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── AI SECURITY INSPECTOR DRAWER (For Viva / Evaluation) ───── -->
+<div class="inspector-drawer" id="inspector-drawer" style="display:none;">
+  <div class="drawer-header">
+    <div class="drawer-title-group">
+      <div class="drawer-title">🛡️ NeoRisk AI Security Inspector</div>
+      <div class="drawer-sub">Live Deep Learning Modality Diagnostics &bull; Team 30</div>
+    </div>
+    <button class="btn-close-drawer" onclick="closeInspector()">&times;</button>
+  </div>
+
+  <div class="drawer-content">
+    
+    <!-- Unified Risk Meter -->
+    <div class="inspector-section">
+      <div class="inspector-label">CROSS-ATTENTION FUSION GAUGE</div>
+      <div class="gauge-display-mini">
+        <div class="gauge-score-large" id="drawer-score">--</div>
+        <div class="gauge-verdict-tag" id="drawer-verdict">Awaiting Transaction</div>
+      </div>
+    </div>
+
+    <!-- 4 Modality Breakdown Bars -->
+    <div class="inspector-section">
+      <div class="inspector-label">MODALITY RISK PROBABILITIES</div>
+      <div class="mod-meter-list">
+        
+        <div class="mod-meter-item">
+          <div class="mod-meter-head">
+            <span>🖼️ Vision (ViT-B/16)</span>
+            <span id="drawer-prob-vit" class="mono font-bold">0%</span>
+          </div>
+          <div class="meter-bar-track">
+            <div class="meter-bar-fill" id="drawer-bar-vit" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="mod-meter-item">
+          <div class="mod-meter-head">
+            <span>📝 Intent NLP (DeBERTa-v3)</span>
+            <span id="drawer-prob-deberta" class="mono font-bold">0%</span>
+          </div>
+          <div class="meter-bar-track">
+            <div class="meter-bar-fill" id="drawer-bar-deberta" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="mod-meter-item">
+          <div class="mod-meter-head">
+            <span>📊 Tabular Pattern (FT-Transformer)</span>
+            <span id="drawer-prob-ft" class="mono font-bold">0%</span>
+          </div>
+          <div class="meter-bar-track">
+            <div class="meter-bar-fill" id="drawer-bar-ft" style="width: 0%;"></div>
+          </div>
+        </div>
+
+        <div class="mod-meter-item">
+          <div class="mod-meter-head">
+            <span>🎤 Voice &amp; Stress (Whisper ASR)</span>
+            <span id="drawer-prob-whisper" class="mono font-bold">0%</span>
+          </div>
+          <div class="meter-bar-track">
+            <div class="meter-bar-fill" id="drawer-bar-whisper" style="width: 0%;"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Live System Specs -->
+    <div class="inspector-section">
+      <div class="inspector-label">NEURAL NETWORK SPECIFICATIONS</div>
+      <div class="specs-table">
+        <div class="spec-row"><span>ViT-B/16</span><span class="mono">86M params &bull; 224x224 KYC</span></div>
+        <div class="spec-row"><span>DeBERTa-v3</span><span class="mono">183M params &bull; 128 tokens</span></div>
+        <div class="spec-row"><span>FT-Transformer</span><span class="mono">PaySim 12 Tabular Features</span></div>
+        <div class="spec-row"><span>Whisper-TE</span><span class="mono">244M params &bull; Telugu ASR</span></div>
+        <div class="spec-row"><span>Fusion</span><span class="mono">Cross-Attention (2 heads, 16-dim)</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>
