@@ -1,123 +1,112 @@
 # 🏦 Multimodal Risk Assessment in FinTech Application
 
-A comprehensive AI-powered fintech risk assessment system that combines multiple AI models for fraud detection, KYC verification, voice authentication, and loan risk analysis.
+An AI-powered fintech risk assessment system combining multiple deep learning models for real-time fraud detection, KYC verification, voice authentication, and loan risk analysis.
 
 ---
 
-## 🧠 AI Models Used
+## 📁 Repository Structure
 
-| Model | Purpose | Framework |
-|-------|---------|-----------|
-| **DeBERTa** | NLP-based transaction risk analysis | PyTorch |
+```
+📦 Multimodal-Risk-Assessment-in-Fintech-Application/
+│
+├── 📂 implementation/          # All source code + trained models
+│   ├── app.py                  # Flask backend (main entry point)
+│   ├── backend/                # FastAPI microservice
+│   ├── frontend/               # Next.js web application
+│   ├── model/                  # Trained AI model files
+│   ├── train_*.ipynb           # Training notebooks
+│   └── README.md               # ← How to run & setup guide
+│
+├── 📂 datasets/                # Dataset info + download links
+│   └── README.md               # ← Download instructions for all datasets
+│
+├── 📂 docs/                    # Reports, presentations, diagrams
+│   ├── *.pdf / *.docx / *.pptx
+│   └── README.md               # ← Index of all documents
+│
+├── .env.example                # Environment variables template
+├── .gitattributes              # Git LFS config (for large model files)
+└── README.md                   # ← You are here
+```
+
+> 📖 **See each folder's README for details:**
+> - [`implementation/README.md`](implementation/README.md) — Setup, run instructions, API docs
+> - [`datasets/README.md`](datasets/README.md) — Download links for all datasets
+> - [`docs/README.md`](docs/README.md) — Project reports & presentations
+
+---
+
+## 🧠 AI Models at a Glance
+
+| Model | Task | Framework |
+|-------|------|-----------|
+| **DeBERTa** | Transaction NLP risk | PyTorch |
+| **ViT** | KYC document verification | PyTorch |
+| **Whisper (Telugu)** | Voice authentication | PyTorch |
 | **FT-Transformer** | Tabular fraud detection | PyTorch |
-| **ViT (Vision Transformer)** | KYC document verification | PyTorch |
 | **XGBoost** | PaySim fraud detection | Scikit-learn |
-| **Whisper (Fine-tuned)** | Telugu voice authentication | PyTorch |
-| **Random Forest** | Credit card fraud detection | Scikit-learn |
-| **LSTM** | Sequential transaction analysis | TensorFlow/Keras |
-| **Cross-Attention Fusion** | Multimodal risk fusion layer | PyTorch |
+| **Random Forest** | Credit card fraud | Scikit-learn |
+| **LSTM** | Sequential transaction analysis | Keras |
+| **Cross-Attention Fusion** | Multimodal risk fusion | PyTorch |
 
 ---
 
-## 📁 Project Structure
+## ⚡ Quick Start
 
-```
-├── app.py                          # Main Flask backend
-├── backend/
-│   ├── main.py                     # FastAPI backend
-│   ├── roboflow_service.py         # KYC document OCR service
-│   └── telegram_service.py        # Alert notifications
-├── frontend/                       # Next.js frontend
-│   └── src/app/
-│       ├── dashboard/             # Risk dashboard
-│       ├── kyc/                   # KYC verification
-│       ├── pay/                   # Payment risk check
-│       ├── loan/                  # Loan risk assessment
-│       └── voice/                 # Voice authentication
-├── model/                          # Trained model files (Git LFS)
-│   ├── deberta_model.pt
-│   ├── vit_model.pt
-│   ├── ft_transformer_model.pt
-│   ├── rf_model.pkl
-│   ├── paysim_xgb_v2.pkl
-│   ├── lstm_model.h5
-│   └── telugu_whisper_finetuned/
-├── train_deberta_nlp.ipynb         # DeBERTa training notebook
-├── train_ft_transformer.ipynb      # FT-Transformer training
-├── train_vit_kyc.ipynb             # ViT KYC training
-├── creditcard train.ipynb          # Credit card fraud training
-└── payism.ipynb                    # PaySim fraud training
-```
-
----
-
-## 📦 Datasets (Download Required)
-
-> ⚠️ Datasets are too large for GitHub. Download them manually and place in `DATASETS MAJOR PROJECT/` folder.
-
-| Dataset | Description | Download |
-|---------|------------|---------|
-| **PaySim Dataset** | Synthetic mobile money transactions | [Kaggle - PaySim](https://www.kaggle.com/datasets/ealaxi/paysim1) |
-| **Credit Card Fraud** | European credit card transactions | [Kaggle - Credit Card Fraud Detection](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) |
-| **KYC Aadhaar Cards** | Indian ID document images | [Roboflow - Back Aadhaar Card](https://universe.roboflow.com/surya-5hkys/back-aadhaar-card) |
-| **Telugu Voice Corpus** | Mozilla Common Voice - Telugu | [Mozilla Common Voice](https://commonvoice.mozilla.org/en/datasets) |
-| **GPTeacher Telugu** | Telugu romanized NLP dataset | Internal dataset (contact repo owner) |
-
----
-
-## 🚀 Setup & Installation
-
-### Backend (Flask)
 ```bash
+# 1. Clone the repo
+git clone https://github.com/nandakishore2004/Multimodal-Risk-Assessment-in-Fintech-Application.git
+
+# 2. Go to implementation folder
+cd implementation
+
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Run backend
 python app.py
-```
 
-### FastAPI Backend
-```bash
-cd backend
-pip install -r requirements.txt
-uvicorn main:app --reload
-```
-
-### Frontend (Next.js)
-```bash
+# 5. Run frontend (separate terminal)
 cd frontend
-npm install
-npm run dev
+npm install && npm run dev
+```
+
+> For detailed setup instructions → see [`implementation/README.md`](implementation/README.md)
+
+---
+
+## 🏗️ System Architecture
+
+```
+                    ┌─────────────────────────────────┐
+                    │     MULTIMODAL AI SYSTEM         │
+                    │                                  │
+  Text Input   ──►  │  🔤 DeBERTa NLP     ─────────┐  │
+  Tabular Data ──►  │  📊 FT-Transformer  ─────────┤  │
+  KYC Image    ──►  │  👁️  ViT Vision      ─────────┼──►  Risk Score
+  Voice (Tel.) ──►  │  🎙️  Whisper Telugu  ─────────┤  │   (0 - 100%)
+  Transactions ──►  │  🌲 XGBoost         ─────────┤  │
+                    │  🔄 LSTM Sequence   ─────────┘  │
+                    │         ↓                        │
+                    │  🔀 Cross-Attention Fusion        │
+                    └─────────────────────────────────┘
 ```
 
 ---
 
-## ⚙️ Environment Variables
+## 📦 Datasets Used
 
-Copy `.env.example` to `.env` and fill in your credentials:
+| Dataset | Source |
+|---------|--------|
+| PaySim (Mobile Money) | [Kaggle](https://www.kaggle.com/datasets/ealaxi/paysim1) |
+| Credit Card Fraud | [Kaggle](https://www.kaggle.com/datasets/mlg-ulb/creditcardfraud) |
+| Aadhaar KYC Images | [Roboflow](https://universe.roboflow.com/surya-5hkys/back-aadhaar-card) |
+| Mozilla Telugu Voice | [Mozilla](https://commonvoice.mozilla.org/en/datasets) |
 
-```bash
-cp .env.example .env
-```
-
----
-
-## 🔬 Training Notebooks
-
-| Notebook | Model | Dataset |
-|----------|-------|---------|
-| `train_deberta_nlp.ipynb` | DeBERTa NLP Model | GPTeacher Telugu |
-| `train_ft_transformer.ipynb` | FT-Transformer | PaySim |
-| `train_vit_kyc.ipynb` | ViT Document Model | Aadhaar Cards |
-| `creditcard train.ipynb` | Random Forest + XGBoost | Credit Card Fraud |
-| `payism.ipynb` | PaySim Fraud Detection | PaySim Dataset |
+> Full dataset details → [`datasets/README.md`](datasets/README.md)
 
 ---
 
-## 🏗️ Architecture
+## 👥 Team — B.Tech Final Year Major Project
 
-![Flow Diagram](Flow%20Diagram%20for%20Multimodal%20Risk%20Assessment%20in%20FinTech%20Applications%20Updated.png)
-
----
-
-## 👥 Team
-
-**Major Project - B.Tech Final Year**  
-Multimodal Risk Assessment in FinTech Applications
+**Multimodal Risk Assessment in FinTech Applications**

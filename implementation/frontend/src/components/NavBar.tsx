@@ -5,9 +5,10 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import {
   LayoutDashboard, FileText, CreditCard,
-  Wallet, LogOut, Sun, Moon, Menu, X, Activity
+  Wallet, LogOut, Sun, Moon, Menu, X, ChevronDown,
 } from "lucide-react";
 import { auth } from "@/lib/api";
+import UserProfileModal from "@/components/UserProfileModal";
 
 const NAV_ITEMS = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -18,12 +19,15 @@ const NAV_ITEMS = [
 export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
+
   const [dark, setDark] = useState(false);
   const [open, setOpen] = useState(false);
   const [user, setUser] = useState<{ name: string } | null>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
-  // Initialize theme
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
+    // Read browser state only after initial render to avoid SSR hydration mismatch
     const saved = localStorage.getItem("finpay_theme") || localStorage.getItem("neorisk_theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     const isDark = saved ? saved === "dark" : prefersDark;
@@ -31,7 +35,7 @@ export default function NavBar() {
     document.documentElement.classList.toggle("dark", isDark);
     setUser(auth.load());
   }, []);
-
+  /* eslint-enable react-hooks/set-state-in-effect */
   const toggleTheme = () => {
     const next = !dark;
     setDark(next);
@@ -153,7 +157,9 @@ export default function NavBar() {
           {/* Right Actions */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             {user && (
-              <div
+              <button
+                onClick={() => setShowProfile(true)}
+                title="View Profile"
                 style={{
                   display: "flex",
                   alignItems: "center",
@@ -162,13 +168,24 @@ export default function NavBar() {
                   background: "var(--bg-secondary)",
                   borderRadius: 8,
                   border: "1px solid var(--border-color)",
+                  cursor: "pointer",
+                  transition: "border-color 0.2s, box-shadow 0.2s",
+                }}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.borderColor = "rgba(245,166,35,0.5)";
+                  e.currentTarget.style.boxShadow = "0 0 0 2px rgba(245,166,35,0.12)";
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.borderColor = "var(--border-color)";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               >
                 <Wallet size={14} style={{ color: "var(--accent)" }} />
                 <span style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>
-                  {user.name.split(" ")[0]}
+                  {user.name}
                 </span>
-              </div>
+                <ChevronDown size={12} style={{ color: "var(--text-muted)", marginLeft: 2 }} />
+              </button>
             )}
             <button
               onClick={toggleTheme}
@@ -245,6 +262,9 @@ export default function NavBar() {
           .mobile-menu-btn { display: none !important; }
         }
       `}</style>
+
+      {/* User Profile Modal */}
+      <UserProfileModal isOpen={showProfile} onClose={() => setShowProfile(false)} />
     </>
   );
 }

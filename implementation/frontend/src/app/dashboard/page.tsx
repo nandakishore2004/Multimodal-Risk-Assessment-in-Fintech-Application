@@ -11,6 +11,9 @@ import {
 import NavBar from "@/components/NavBar";
 import RiskMeter from "@/components/RiskMeter";
 import PinModal from "@/components/PinModal";
+import ShapExplainer from "@/components/ShapExplainer";
+import RiskHistory from "@/components/RiskHistory";
+import CompliancePanel from "@/components/CompliancePanel";
 import { api, auth, type HealthResponse, type Wallet } from "@/lib/api";
 
 const FEATURE_CARDS = [
@@ -159,7 +162,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <h1 className="section-title" style={{ margin: 0, fontSize: 26, fontWeight: 800 }}>
-                {user ? `Welcome back, ${user.name.split(" ")[0]} 👋` : "FinPay Dashboard"}
+                {user ? `Welcome back, ${user.name} 👋` : "FinPay Dashboard"}
               </h1>
               <p className="section-sub" style={{ margin: "4px 0 0", fontSize: 13 }}>
                 Intelligent Financial Platform · Multimodal AI Risk Assessment Engine
@@ -272,39 +275,47 @@ export default function DashboardPage() {
                     FinPay Digital Wallet
                   </span>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginTop: 4 }}>
-                    <h2 style={{ fontSize: 32, fontWeight: 900, color: "var(--text-primary)", letterSpacing: "-0.03em", margin: 0 }}>
-                      {loading ? (
-                        <div className="skeleton" style={{ width: 140, height: 36, borderRadius: 8 }} />
-                      ) : balanceRevealed ? (
-                        `₹${(wallet?.balance ?? 50000).toLocaleString("en-IN")}`
-                      ) : (
-                        <span style={{ letterSpacing: "0.1em", color: "var(--text-muted)" }}>••••••</span>
-                      )}
-                    </h2>
-                    {!loading && (
+                    {loading ? (
+                      <div className="skeleton" style={{ width: 140, height: 36, borderRadius: 8 }} />
+                    ) : balanceRevealed ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <h2 style={{ fontSize: 32, fontWeight: 900, color: "var(--text-primary)", letterSpacing: "-0.03em", margin: 0 }}>
+                          ₹{(wallet?.balance ?? 50000).toLocaleString("en-IN")}
+                        </h2>
+                        <button
+                          onClick={() => setBalanceRevealed(false)}
+                          title="Hide balance"
+                          style={{
+                            background: "rgba(255,255,255,0.06)",
+                            border: "1px solid rgba(255,255,255,0.1)",
+                            borderRadius: 8, width: 28, height: 28,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                            cursor: "pointer",
+                            color: "var(--text-muted)",
+                            flexShrink: 0,
+                          }}
+                        >
+                          <EyeOff size={13} />
+                        </button>
+                      </div>
+                    ) : (
                       <button
-                        onClick={() => {
-                          if (balanceRevealed) {
-                            setBalanceRevealed(false);
-                          } else {
-                            setShowBalancePinModal(true);
-                          }
-                        }}
-                        title={balanceRevealed ? "Hide balance" : "Reveal balance"}
+                        onClick={() => setShowBalancePinModal(true)}
                         style={{
-                          background: "rgba(255,255,255,0.06)",
-                          border: "1px solid rgba(255,255,255,0.1)",
-                          borderRadius: 8, width: 28, height: 28,
-                          display: "flex", alignItems: "center", justifyContent: "center",
-                          cursor: "pointer",
-                          color: balanceRevealed ? "var(--text-muted)" : "rgba(79,143,255,0.8)",
-                          flexShrink: 0,
+                          display: "flex", alignItems: "center", gap: 6,
+                          padding: "8px 14px", borderRadius: 8,
+                          background: "rgba(79,143,255,0.15)",
+                          border: "1px solid rgba(79,143,255,0.3)",
+                          color: "var(--accent, #4f8fff)", fontSize: 13, fontWeight: 600,
+                          cursor: "pointer", transition: "background 0.2s"
                         }}
+                        onMouseOver={(e) => e.currentTarget.style.background = "rgba(79,143,255,0.25)"}
+                        onMouseOut={(e) => e.currentTarget.style.background = "rgba(79,143,255,0.15)"}
                       >
-                        {balanceRevealed ? <EyeOff size={13} /> : <Lock size={13} />}
+                        Check Balance
                       </button>
                     )}
-                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--success)", background: "rgba(16,185,129,0.12)", padding: "2px 6px", borderRadius: 4 }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, color: "var(--success)", background: "rgba(16,185,129,0.12)", padding: "2px 6px", borderRadius: 4, marginLeft: 6 }}>
                       Active
                     </span>
                   </div>
@@ -701,6 +712,40 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
+
+        {/* ── NEW: AI Intelligence Panels ─────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          style={{ marginTop: 32 }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18 }}>
+            <div style={{ width: 3, height: 22, borderRadius: 99, background: "linear-gradient(180deg, var(--accent), var(--accent-2))" }} />
+            <h2 style={{ fontSize: 17, fontWeight: 800, color: "var(--text-primary)", margin: 0 }}>AI Intelligence & Compliance</h2>
+            <span style={{ fontSize: 10, fontWeight: 700, padding: "3px 8px", borderRadius: 99, background: "rgba(79,143,255,0.12)", color: "var(--accent)", letterSpacing: "0.05em" }}>NEW</span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: 18 }}>
+            {/* SHAP Explainability */}
+            <ShapExplainer
+              amount={50000}
+              txType={4}
+              oldBalanceOrg={50000}
+              oldBalanceDest={0}
+              step={1}
+            />
+
+            {/* Risk History Timeline */}
+            <RiskHistory />
+
+            {/* Compliance Panel */}
+            <div style={{ gridColumn: "1 / -1" }}>
+              <CompliancePanel riskScore={creditRisk} />
+            </div>
+          </div>
+        </motion.div>
+
       </main>
 
     </div>

@@ -30,6 +30,71 @@ interface SampleScenario {
   text: string;
 }
 
+// ── Risk keywords for live client-side highlight ────────────────────────────
+const RISK_KEYWORDS_EN = [
+  'urgent', 'immediately', 'right now', 'emergency',
+  'password', 'otp', 'pin', 'cvv', 'verify', 'verification',
+  'block', 'unblock', 'freeze', 'suspend', 'locked',
+  'money', 'transfer', 'send money', 'transaction', 'payment',
+  'credit', 'debit', 'wallet', 'cash',
+  'hacked', 'stolen', 'scam', 'fraud', 'phishing',
+  'account', 'bank', 'loan', 'claim', 'prize', 'reward',
+  'expire', 'expiry', 'deadline', 'cancel',
+];
+const RISK_KEYWORDS_TE = [
+  'అర్జెంట్', 'వెంటనే', 'అత్యవసరంగా',
+  'పాస్వర్డ్', 'పాస్‌వర్డ్', 'ఓటీపీ',
+  'బ్లాక్', 'అన్‌బ్లాక్', 'డబ్బు', 'డబ్బులు',
+  'ట్రాన్స్ఫర్', 'బదిలీ', 'అకౌంట్', 'ఖాతా', 'లోన్',
+  'హ్యాక్', 'దొంగతనం', 'వెరిఫై', 'క్రెడిట్', 'డెబిట్',
+  'పిన్', 'గెలుపు', 'రివార్డ్', 'రద్దు', 'గడువు',
+];
+
+function getMatchedKeywords(text: string): string[] {
+  const lower = text.toLowerCase();
+  const enMatches = RISK_KEYWORDS_EN.filter(kw => lower.includes(kw));
+  const teMatches = RISK_KEYWORDS_TE.filter(kw => text.includes(kw));
+  return [...new Set([...enMatches, ...teMatches])];
+}
+
+function HighlightedTranscript({ text }: { text: string }) {
+  if (!text) return null;
+  // Build a regex that matches any risk keyword (case-insensitive for English)
+  const allKw = [...RISK_KEYWORDS_EN, ...RISK_KEYWORDS_TE];
+  if (allKw.length === 0) return <span>{text}</span>;
+  // Sort by length desc so longer phrases match first
+  const sorted = [...allKw].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isRisk = allKw.some(kw => part.toLowerCase() === kw.toLowerCase() || part === kw);
+        if (isRisk) {
+          return (
+            <mark
+              key={i}
+              style={{
+                background: 'rgba(239,68,68,0.18)',
+                color: '#ef4444',
+                borderRadius: 4,
+                padding: '1px 4px',
+                fontWeight: 800,
+                border: '1px solid rgba(239,68,68,0.4)',
+                fontSize: 'inherit',
+              }}
+            >
+              ⚠ {part}
+            </mark>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 const DEMO_SAMPLES: SampleScenario[] = [
   {
     label: "Telugu Scam Call",
@@ -518,6 +583,7 @@ export default function VoicePage() {
                 )}
               </div>
 
+              {/* ── Editable transcript textarea ──────────────────────── */}
               <textarea
                 id="voice-transcript-textarea"
                 className="input-field"
@@ -533,9 +599,86 @@ export default function VoicePage() {
                   resize: "vertical",
                   lineHeight: 1.6,
                   fontSize: 14,
-                  borderColor: recState === "recording" ? "var(--accent)" : undefined,
+                  borderColor:
+                    recState === "recording"
+                      ? "var(--accent)"
+                      : getMatchedKeywords(manualText).length > 0
+                      ? "var(--danger)"
+                      : undefined,
+                  boxShadow:
+                    getMatchedKeywords(manualText).length > 0
+                      ? "0 0 0 2px rgba(239,68,68,0.25)"
+                      : undefined,
+                  transition: "border-color 0.2s, box-shadow 0.2s",
                 }}
               />
+
+              {/* ── Live keyword highlight preview ───────────────────────── */}
+              {manualText && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    background: "var(--bg-secondary)",
+                    border: `1px solid ${
+                      getMatchedKeywords(manualText).length > 0
+                        ? "rgba(239,68,68,0.35)"
+                        : "var(--border-color)"
+                    }`,
+                    fontSize: 14,
+                    lineHeight: 1.8,
+                    color: "var(--text-primary)",
+                    minHeight: 40,
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
+                    transition: "border-color 0.2s",
+                  }}
+                >
+                  <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
+                    🔍 Live Highlight Preview
+                  </div>
+                  <HighlightedTranscript text={manualText} />
+                </div>
+              )}
+
+              {/* ── Real-time URGENT RISK banner ─────────────────────────── */}
+              {manualText && getMatchedKeywords(manualText).length > 0 && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    background: "rgba(239,68,68,0.10)",
+                    border: "1.5px solid rgba(239,68,68,0.5)",
+                    color: "var(--danger)",
+                    fontSize: 12,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                    animation: "pulse-red 1.8s ease-in-out infinite",
+                  }}
+                >
+                  <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                  <strong style={{ fontSize: 12 }}>⚡ RISK DETECTED:</strong>
+                  {getMatchedKeywords(manualText).map((kw, i) => (
+                    <span
+                      key={i}
+                      style={{
+                        padding: "2px 8px",
+                        borderRadius: 99,
+                        background: "rgba(239,68,68,0.18)",
+                        border: "1px solid rgba(239,68,68,0.4)",
+                        fontWeight: 700,
+                        fontSize: 11,
+                      }}
+                    >
+                      ⚠ {kw}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               <div
                 style={{

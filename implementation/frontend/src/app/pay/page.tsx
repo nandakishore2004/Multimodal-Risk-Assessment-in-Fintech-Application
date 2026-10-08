@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CreditCard, Send, ShieldAlert, ShieldCheck, ShieldOff,
   Loader2, Wallet, AlertTriangle, RefreshCw, MessageCircle,
-  CheckCircle2, XCircle, Zap, ArrowRight
+  CheckCircle2, XCircle, Zap, ArrowRight, Eye, EyeOff, Lock
 } from "lucide-react";
 import NavBar from "@/components/NavBar";
 import RiskMeter from "@/components/RiskMeter";
@@ -78,8 +78,10 @@ export default function PayPage() {
   const [result, setResult] = useState<PaymentResponse | null>(null);
   const [error, setError] = useState("");
   const [pollCount, setPollCount] = useState(0);
-  const [showPinModal, setShowPinModal] = useState(false);
   const [pendingPayload, setPendingPayload] = useState<Record<string, unknown> | null>(null);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const [pinAction, setPinAction] = useState<"pay" | "balance" | null>(null);
+  const [showPinModal, setShowPinModal] = useState(false);
 
   const loadWallet = useCallback(async () => {
     try {
@@ -151,20 +153,23 @@ export default function PayPage() {
   };
 
   // Step 2: PIN verified → actually send payment
+  // PIN verified → actually send payment
   const handlePinSuccess = async () => {
-    setShowPinModal(false);
     if (!pendingPayload) return;
     setError("");
     setResult(null);
     setLoading(true);
-    setPollCount(0);
+    // Step 2: Pay request
     try {
       const res = await api.pay(pendingPayload);
       setResult(res);
-      if (res.success && res.new_balance !== undefined) {
+      if (res.status === "PENDING_TELEGRAM") {
+        setPollCount(0);
+      } else if (res.success && res.new_balance !== undefined) {
         setWallet((w) => w ? { ...w, balance: res.new_balance! } : w);
       }
-    } catch (err) {
+    } catch (err: unknown) {
+      setResult({ status: "BLOCKED", success: false, tx_id: "", amount: 0, recipient_name: "", recipient_id: "", overall_risk: 0, risk_factors: [], title: "Error", message: "Network error" });
       setError(err instanceof Error ? err.message : "Payment failed");
     } finally {
       setLoading(false);
@@ -180,13 +185,23 @@ export default function PayPage() {
       <div className="gradient-mesh-grid" />
       <NavBar />
 
-      {/* PIN Modal */}
+      {/* Unified PIN Modal for both actions */}
       <PinModal
-        isOpen={showPinModal}
-        onSuccess={handlePinSuccess}
-        onClose={() => { setShowPinModal(false); setPendingPayload(null); }}
-        title="Enter UPI PIN"
-        subtitle={`Authorise ₹${amount || "0"} payment`}
+        isOpen={pinAction !== null}
+        onSuccess={() => {
+          if (pinAction === "pay") {
+            handlePinSuccess();
+          } else {
+            setBalanceRevealed(true);
+          }
+          setPinAction(null);
+        }}
+        onClose={() => {
+          setPinAction(null);
+          setPendingPayload(null);
+        }}
+        title={pinAction === "pay" ? "Enter UPI PIN" : "View Balance"}
+        subtitle={pinAction === "pay" ? `Authorise ₹${amount || "0"} payment` : "Enter PIN to reveal your balance"}
         required={false}
       />
 
@@ -226,9 +241,50 @@ export default function PayPage() {
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 4 }}>
                     {wallet?.bank_name ?? "State Bank of India"}
                   </p>
-                  <p className="stat-number" style={{ fontSize: 26 }}>
-                    ₹{wallet ? wallet.balance.toLocaleString("en-IN", { maximumFractionDigits: 0 }) : "—"}
-                  </p>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    {wallet ? (
+                      balanceRevealed ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <p className="stat-number" style={{ fontSize: 26, margin: 0 }}>
+                            ₹{wallet.balance.toLocaleString("en-IN", { maximumFractionDigits: 0 })}
+                          </p>
+                          <button
+                            onClick={() => setBalanceRevealed(false)}
+                            title="Hide balance"
+                            style={{
+                              background: "rgba(255,255,255,0.1)",
+                              border: "1px solid rgba(255,255,255,0.2)",
+                              borderRadius: 6, width: 26, height: 26,
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                              cursor: "pointer",
+                              color: "rgba(255,255,255,0.5)",
+                            }}
+                          >
+                            <EyeOff size={14} />
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.preventDefault(); setPinAction("balance"); }}
+                          style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "8px 14px", borderRadius: 8,
+                            background: "rgba(79,143,255,0.15)",
+                            border: "1px solid rgba(79,143,255,0.3)",
+                            color: "var(--accent, #4f8fff)", fontSize: 13, fontWeight: 600,
+                            cursor: "pointer", marginTop: 4, transition: "background 0.2s"
+                          }}
+                          onMouseOver={(e) => e.currentTarget.style.background = "rgba(79,143,255,0.25)"}
+                          onMouseOut={(e) => e.currentTarget.style.background = "rgba(79,143,255,0.15)"}
+                        >
+                          Check Balance
+                        </button>
+                      )
+                    ) : (
+                      <p className="stat-number" style={{ fontSize: 26, margin: 0 }}>—</p>
+                    )}
+                  </div>
                   <p style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>Available Balance</p>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
@@ -265,7 +321,17 @@ export default function PayPage() {
               <h2 style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", marginBottom: 20 }}>
                 Send Money
               </h2>
-              <form onSubmit={handlePay} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const payload = {
+                  amount: parseFloat(amount),
+                  recipient_id: selectedRecipient.id === "custom" ? customRecipient.id : selectedRecipient.id,
+                  recipient_name: selectedRecipient.id === "custom" ? customRecipient.name : selectedRecipient.name,
+                  note,
+                };
+                setPendingPayload(payload);
+                setPinAction("pay");
+              }} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
 
                 {/* Recipient picker */}
                 <div>

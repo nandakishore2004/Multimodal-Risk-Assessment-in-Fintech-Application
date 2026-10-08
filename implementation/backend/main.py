@@ -397,13 +397,21 @@ async def analyze_voice(
 
         final_transcript = whisper_transcript or transcript_text
 
+        # NLP keyword analysis — only genuine risk keywords, no generic loan/bank/money words
         suspicious_words = [
-            "urgent", "password", "otp", "block", "unblock",
-            "hacked", "stolen", "money", "transfer", "account",
+            "urgent", "immediately", "right now", "emergency",
+            "password", "otp", "pin", "cvv", "verify", "verification",
+            "block", "unblock", "freeze", "suspend", "locked",
+            "hacked", "stolen", "scam", "fraud", "phishing",
+            "claim", "prize", "reward",
+            "expire", "expiry", "deadline", "cancel",
         ]
         telugu_suspicious = [
-            "అత్యవసరం", "పాస్‌వర్డ్", "ఓటీపీ", "బ్లాక్",
-            "ఖాతా", "డబ్బులు", "బదిలీ", "దొంగతనం", "హ్యాక్",
+            "అర్జెంట్", "వెంటనే", "అత్యవసరంగా",
+            "పాస్వర్డ్", "పాస్‌వర్డ్", "ఓటీపీ",
+            "బ్లాక్", "అన్‌బ్లాక్",
+            "హ్యాక్", "దొంగతనం", "వెరిఫై",
+            "పిన్", "గెలుపు", "రివార్డ్", "రద్దు", "గడువు",
         ]
 
         text_lower = final_transcript.lower()

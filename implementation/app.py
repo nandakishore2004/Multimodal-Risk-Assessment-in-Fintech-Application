@@ -243,22 +243,39 @@ def voice_analyze():
     """Real Telugu ASR endpoint for Voice Modality — with 10s Whisper timeout + NLP fallback."""
     WHISPER_TIMEOUT_SECONDS = 10  # max time we wait for Whisper
 
-    # ── NLP keyword analysis (runs always as fallback) ────────────────────────
+    # ── NLP keyword analysis (runs always as fallback) ───────────────────────────────────────
     def nlp_analyze(text):
         suspicious_words = [
-            'urgent', 'password', 'otp', 'block', 'unblock',
-            'hacked', 'stolen', 'money', 'transfer', 'account'
+            # Core scam triggers
+            'urgent', 'immediately', 'right now', 'emergency',
+            # Credential theft
+            'password', 'otp', 'pin', 'cvv', 'verify', 'verification',
+            # Account actions
+            'block', 'unblock', 'freeze', 'suspend', 'locked',
+            # Fraud bait
+            'hacked', 'stolen', 'scam', 'fraud', 'phishing',
+            # Coercion bait
+            'claim', 'prize', 'reward',
+            # Deadline coercion
+            'expire', 'expiry', 'deadline', 'cancel',
         ]
         telugu_suspicious = [
-            '\u0c05\u0c30\u0c4d\u0c1c\u0c46\u0c02\u0c1f\u0c4d',  # అర్జెంట్
-            '\u0c2a\u0c3e\u0c38\u0c4d\u0c35\u0c30\u0c4d\u0c21\u0c4d',  # పాస్వర్డ్
-            '\u0c2c\u0c4d\u0c32\u0c3e\u0c15\u0c4d',  # బ్లాక్
-            '\u0c21\u0c2c\u0c4d\u0c2c\u0c41',  # డబ్బు
-            '\u0c1f\u0c4d\u0c30\u0c3e\u0c28\u0c4d\u0c38\u0c4d\u0c2b\u0c30\u0c4d',  # ట్రాన్స్ఫర్
-            '\u0c05\u0c15\u0c4c\u0c02\u0c1f\u0c4d',  # అకౌంట్
-            '\u0c13\u0c1f\u0c40\u0c2a\u0c40',  # ఓటీపీ
-            '\u0c17\u0c46\u0c32\u0c41\u0c2a\u0c41',  # గెలుపు
-            '\u0c35\u0c46\u0c30\u0c3f\u0c2b\u0c48',  # వెరిఫై
+            'అర్జెంట్',       # urgent
+            'వెంటనే',         # immediately
+            'అత్యవసరంగా',    # emergency
+            'పాస్వర్డ్',      # password
+            'పాస్‌వర్డ్',     # password (alternate)
+            'ఓటీపీ',          # OTP
+            'బ్లాక్',         # block
+            'అన్‌బ్లాక్',    # unblock
+            'హ్యాక్',         # hacked
+            'దొంగతనం',       # stolen
+            'వెరిఫై',        # verify
+            'పిన్',           # pin
+            'గెలుపు',         # prize/win
+            'రివార్డ్',       # reward
+            'రద్దు',          # cancel
+            'గడువు',          # expire/deadline
         ]
         t_lower = text.lower()
         matched = (
@@ -833,12 +850,30 @@ def assess_loan():
         emi = _loan_emi(loan_amount, provisional_rate, tenure_months)
         dti_ratio = (monthly_obligations + emi) / monthly_income
         loan_income_ratio = loan_amount / (monthly_income * 12)
+        # ── Asset declaration (optional collateral backing) ────────────────────
+        property_value  = max(0, float(data.get('property_value',  0) or 0))
+        gold_grams      = max(0, float(data.get('gold_grams',      0) or 0))
+        savings_fd      = max(0, float(data.get('savings_fd',      0) or 0))
+        vehicle_value   = max(0, float(data.get('vehicle_value',   0) or 0))
+        investments     = max(0, float(data.get('investments',     0) or 0))
+
+        # Gold at current approx market rate (₹/gram)  — using conservative ₹7,200
+        gold_value      = gold_grams * 7200
+        net_asset_value = property_value + gold_value + savings_fd + vehicle_value + investments
+
+        # Collateral-to-loan ratio: how much asset backs the requested loan
+        collateral_ratio = net_asset_value / loan_amount if loan_amount > 0 else 0
+
+        # Asset-backed risk reduction (max 20 pts): strong assets lower default risk
+        asset_risk_reduction = min(20, collateral_ratio * 10 + (savings_fd / monthly_income if monthly_income > 0 else 0) * 2)
+
         financial_risk = 0.0
         financial_risk += max(0, (700 - credit_score) / 400) * 42
         financial_risk += max(0, dti_ratio - 0.35) * 70
         financial_risk += max(0, loan_income_ratio - 1.0) * 14
         financial_risk += min(3, missed_emis) * 8
         financial_risk += max(0, 1.0 - employment_years) * 7
+        financial_risk -= asset_risk_reduction           # assets reduce risk
         financial_risk = min(100, max(0, financial_risk))
 
         # Network/relationship evidence.  This is intentionally a declared input
@@ -880,6 +915,15 @@ def assess_loan():
         elif dti_ratio <= 0.40: factors.append('Debt-to-income ratio is within the preferred affordability range.')
         if missed_emis: factors.append(f'{missed_emis} recent missed EMI(s) increase repayment-sequence risk.')
         if graph_risk >= 50: factors.append('Reference-network screening returned an elevated relationship risk.')
+        # Asset factors
+        if net_asset_value > 0:
+            factors.append(f'Declared assets worth ₹{net_asset_value:,.0f} strengthen your collateral profile.')
+        if collateral_ratio >= 1.0:
+            factors.append(f'Asset-to-loan ratio {collateral_ratio:.1f}x — full collateral coverage improves approval odds.')
+        elif collateral_ratio >= 0.5:
+            factors.append(f'Assets cover {collateral_ratio*100:.0f}% of loan amount — partial collateral noted.')
+        if savings_fd > monthly_income * 6:
+            factors.append(f'Emergency fund of ₹{savings_fd:,.0f} (>{6} months income) significantly reduces risk.')
         factors.extend(model_assessment.get('risk_factors', []))
         if not factors: factors.append('No material affordability, repayment, KYC, voice, text, or network risk was detected.')
 
@@ -944,8 +988,14 @@ def assess_loan():
             rate = partner['base_rate'] + credit_adj + dti_adj
 
             # Approved amount: min of (requested, bank cap, income multiplier)
+            # With strong assets, boost up to 1.5x the income multiplier (secured loan boost)
             income_mult = 20 if credit_score >= 750 else (15 if credit_score >= 700 else 10)
-            approved_amount = min(loan_amount, partner['max_amount'], monthly_income * income_mult)
+            asset_boost = min(1.5, 1.0 + collateral_ratio * 0.25)   # max +50% if assets > 2x loan
+            approved_amount = min(
+                loan_amount,
+                partner['max_amount'],
+                monthly_income * income_mult * asset_boost
+            )
 
             bank_rules.append({
                 'bank': partner['bank'],
@@ -977,7 +1027,17 @@ def assess_loan():
                 'credit_score': credit_score, 'monthly_income': monthly_income,
                 'proposed_emi': round(emi), 'debt_to_income_percent': round(dti_ratio * 100, 1),
                 'loan_income_ratio': round(loan_income_ratio, 2), 'financial_risk': round(financial_risk),
-                'repayment_sequence_risk': min(100, missed_emis * 25), 'reference_network_risk': round(graph_risk)
+                'repayment_sequence_risk': min(100, missed_emis * 25), 'reference_network_risk': round(graph_risk),
+                'asset_summary': {
+                    'net_asset_value': round(net_asset_value),
+                    'collateral_ratio': round(collateral_ratio, 2),
+                    'asset_risk_reduction': round(asset_risk_reduction, 1),
+                    'property_value': round(property_value),
+                    'gold_value': round(gold_value),
+                    'savings_fd': round(savings_fd),
+                    'vehicle_value': round(vehicle_value),
+                    'investments': round(investments),
+                }
             },
             'multimodal_assessment': model_assessment, 'factors': factors, 'bank_recommendations': offers, 'bank_rules': bank_rules,
             'disclaimer': 'Prototype decision support only. Final lending approval requires lender policy, consent, and human verification.'
@@ -1311,6 +1371,322 @@ def model_info():
     })
 
 
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🤖  GEMINI AI ASSISTANT  —  FinPay Intelligent Chat
+# ═══════════════════════════════════════════════════════════════════════════════
+
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+
+FINPAY_SYSTEM_PROMPT = """You are FinPay AI — an intelligent financial assistant inside FinPay, a multimodal AI-powered FinTech risk assessment platform.
+
+## Your job:
+- Explain Risk scores (0-100, Green/Yellow/Red)
+- Explain KYC document verification (ViT-B/16 model)
+- Talk about Fraud detection (DeBERTa NLP, XGBoost, FT-Transformer)
+- Explain Voice authentication (Telugu Whisper ASR)
+- Help with Loan eligibility and bank recommendations
+- Warn about Payment safety and UPI fraud
+- Explain Indian banking regulations (RBI, PMLA, KYC)
+
+## Language Style (CRITICAL):
+- Respond in a natural **Telugu-English mix** — exactly like how people in Andhra/Telangana normally talk
+- Example style: "Mee risk score 87% ante chala high — idi RED zone lo undi. Fraud probability kadupu pettukoku!"
+- Use Telugu words naturally mixed with English technical terms
+- Do NOT force pure Telugu script (తెలుగు అక్షరాలు) — romanized Telugu + English mix is perfect
+- Do NOT respond in fully formal English either
+- Use ₹ for Indian Rupees, keep it casual and friendly like a friend explaining finance
+- Start replies naturally — no robotic greetings every time
+
+## Response rules:
+- Super concise — max 2-3 short sentences
+- Conversational, warm, friendly tone
+- Risk: <30 = Low risk (Green) 🟢, 30-60 = Medium 🟡, >60 = High risk (Red) 🔴
+
+**CRITICAL: Telugu-English natural mix. Short replies only. Like talking to a friend.**"""
+
+@app.route('/api/chat', methods=['POST'])
+def ai_chat():
+    """Gemini-powered FinPay AI assistant endpoint."""
+    try:
+        data = request.get_json(silent=True) or {}
+        user_message = str(data.get('message', '')).strip()
+        history = data.get('history', [])  # [{role: 'user'/'model', parts: [text]}]
+        user_context = data.get('user_context', {})
+        user_lang = data.get('lang', 'tenglish')  # 'te' | 'en' | 'tenglish'
+
+        if not user_message:
+            return jsonify({'success': False, 'error': 'Empty message'}), 400
+
+        import os, urllib.request, json as _json
+        gemini_key = os.environ.get('GEMINI_API_KEY')
+        groq_key = os.environ.get('GROQ_API_KEY')
+        or_key = os.environ.get('OPENROUTER_API_KEY')
+        
+        if not (gemini_key or groq_key or or_key):
+            return jsonify({
+                'success': True,
+                'reply': "FinPay AI is running in demo mode. Add API keys to .env to enable.",
+                'model': 'demo-fallback'
+            })
+
+        # Language-specific reply instruction (MANDATORY for correct language)
+        lang_instructions = {
+            'te': (
+                "\n\n## MANDATORY LANGUAGE RULE:\n"
+                "User typed in TELUGU SCRIPT. Reply ONLY in Telugu script (తెలుగు అక్షరాలలో). No English, no romanized Telugu."
+            ),
+            'en': (
+                "\n\n## MANDATORY LANGUAGE RULE:\n"
+                "User typed in ENGLISH. Reply ONLY in clear English. No Telugu script, no Tenglish."
+            ),
+            'tenglish': (
+                "\n\n## MANDATORY LANGUAGE RULE:\n"
+                "User typed in Tenglish (romanized Telugu + English mix). Reply in the SAME natural Tenglish style. No Telugu script."
+            ),
+        }
+        lang_hint = lang_instructions.get(user_lang, lang_instructions['tenglish'])
+
+        # Inject User Profile context dynamically
+        dynamic_prompt = FINPAY_SYSTEM_PROMPT + lang_hint
+        if user_context:
+            dynamic_prompt += "\n\n--- User Profile ---\n"
+            if 'user' in user_context and user_context['user']:
+                usr = user_context['user']
+                dynamic_prompt += f"Name: {usr.get('name', 'Unknown')}\n"
+                dynamic_prompt += f"Credit Score: {usr.get('credit_score', 'N/A')}\n"
+            if 'wallet' in user_context and user_context['wallet']:
+                wal = user_context['wallet']
+                dynamic_prompt += f"Wallet Balance: ₹{wal.get('balance', 0)}\n"
+            if 'latest_risk' in user_context and user_context['latest_risk']:
+                risk = user_context['latest_risk']
+                dynamic_prompt += f"Latest Risk: {risk.get('risk_score', 'N/A')}% ({risk.get('verdict', '')})\n"
+            dynamic_prompt += "--------------------"
+
+        # Provider 1: GEMINI
+        if gemini_key:
+            contents = []
+            for turn in history[-10:]:
+                role = turn.get('role', 'user')
+                text = turn.get('text', '')
+                if text: contents.append({'role': role, 'parts': [{'text': text}]})
+            contents.append({'role': 'user', 'parts': [{'text': user_message}]})
+
+            payload = _json.dumps({
+                'system_instruction': {'parts': [{'text': dynamic_prompt}]},
+                'contents': contents,
+                'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024, 'topP': 0.9}
+            }).encode('utf-8')
+
+            for model_name in ['gemini-flash-latest', 'gemini-2.5-flash-lite', 'gemini-2.5-flash']:
+                url = f'https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent?key={gemini_key}'
+                req = urllib.request.Request(url, data=payload, headers={'Content-Type': 'application/json'}, method='POST')
+                try:
+                    with urllib.request.urlopen(req, timeout=10) as resp:
+                        result = _json.loads(resp.read().decode('utf-8'))
+                        reply_text = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])[0].get('text', '')
+                        import re
+                        reply_text = re.sub(r'(?i)User Safety:.*', '', reply_text)
+                        reply_text = re.sub(r'(?i)Response Safety:.*', '', reply_text).strip()
+                        if reply_text:
+                            return jsonify({'success': True, 'reply': reply_text, 'model': f'gemini ({model_name})'})
+                except Exception:
+                    continue # Try next model or next provider
+        
+        # Build common OpenAI format for Groq/OpenRouter
+        messages = [{'role': 'system', 'content': dynamic_prompt}]
+        for turn in history[-10:]:
+            role = 'assistant' if turn.get('role') == 'model' else 'user'
+            text = turn.get('text', '')
+            if text: messages.append({'role': role, 'content': text})
+        messages.append({'role': 'user', 'content': user_message})
+
+        # Provider 2: GROQ
+        if groq_key:
+            payload = _json.dumps({'model': 'llama-3.1-8b-instant', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1024}).encode('utf-8')
+            req = urllib.request.Request('https://api.groq.com/openai/v1/chat/completions', data=payload, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {groq_key}'}, method='POST')
+            try:
+                with urllib.request.urlopen(req, timeout=10) as resp:
+                    result = _json.loads(resp.read().decode('utf-8'))
+                    reply_text = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    import re
+                    reply_text = re.sub(r'(?i)User Safety:.*', '', reply_text)
+                    reply_text = re.sub(r'(?i)Response Safety:.*', '', reply_text).strip()
+                    if reply_text: return jsonify({'success': True, 'reply': reply_text, 'model': 'groq (llama-3.1)'})
+            except Exception:
+                pass # Fallback to next
+
+        # Provider 3: OPENROUTER
+        if or_key:
+            payload = _json.dumps({'model': 'openrouter/free', 'messages': messages, 'temperature': 0.7, 'max_tokens': 1024}).encode('utf-8')
+            req = urllib.request.Request('https://openrouter.ai/api/v1/chat/completions', data=payload, headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {or_key}', 'HTTP-Referer': 'http://localhost:5000', 'X-Title': 'FinPay'}, method='POST')
+            try:
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    result = _json.loads(resp.read().decode('utf-8'))
+                    reply_text = result.get('choices', [{}])[0].get('message', {}).get('content', '')
+                    import re
+                    reply_text = re.sub(r'(?i)User Safety:.*', '', reply_text)
+                    reply_text = re.sub(r'(?i)Response Safety:.*', '', reply_text).strip()
+                    used_model = result.get('model', 'openrouter/free')
+                    if reply_text: return jsonify({'success': True, 'reply': reply_text, 'model': f'openrouter ({used_model})'})
+            except Exception:
+                pass
+
+        return jsonify({'success': True, 'reply': '⚠️ All AI providers (Gemini, Groq, OpenRouter) are currently down or out of quota. Please try again later.', 'model': 'quota-exceeded'})
+
+    except Exception as e:
+        print(f"[AI Chat Error]: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 📊  SHAP EXPLAINABILITY  —  "Why was this flagged?"
+# ═══════════════════════════════════════════════════════════════════════════════
+
+@app.route('/api/shap_explain', methods=['POST'])
+def shap_explain():
+    """Return SHAP feature importance for a payment transaction (XGBoost model)."""
+    try:
+        data = request.get_json(silent=True) or {}
+        amount        = float(data.get('amount', 0))
+        tx_type       = int(data.get('type', 4))
+        old_bal_orig  = float(data.get('oldbalanceOrg', 0))
+        old_bal_dest  = float(data.get('oldbalanceDest', 0))
+        step          = int(data.get('step', 1))
+
+        new_bal_orig  = max(0, old_bal_orig - amount)
+        new_bal_dest  = old_bal_dest + amount
+        orig_diff     = old_bal_orig - new_bal_orig - amount
+        dest_diff     = new_bal_dest - old_bal_dest - amount
+        orig_zero     = 1 if new_bal_orig == 0 else 0
+        dest_zero     = 1 if old_bal_dest == 0 else 0
+        amount_ratio  = amount / (old_bal_orig + 1)
+
+        features = [step, tx_type, amount, old_bal_orig, new_bal_orig,
+                    old_bal_dest, new_bal_dest, orig_diff, dest_diff,
+                    orig_zero, dest_zero, amount_ratio]
+
+        feature_names = [
+            'Transaction Step', 'Transaction Type', 'Amount (₹)',
+            'Sender Opening Balance', 'Sender Closing Balance',
+            'Receiver Opening Balance', 'Receiver Closing Balance',
+            'Sender Balance Discrepancy', 'Receiver Balance Discrepancy',
+            'Sender Account Drained', 'New Receiver Account', 'Amount-to-Balance Ratio'
+        ]
+
+        shap_values = []
+
+        if paysim_model and paysim_scaler:
+            try:
+                import shap as _shap
+                X_scaled = paysim_scaler.transform([features])
+                explainer = _shap.TreeExplainer(paysim_model)
+                sv = explainer.shap_values(X_scaled)
+                # sv shape: (n_samples, n_features) for binary or list for multiclass
+                if isinstance(sv, list):
+                    vals = sv[1][0].tolist()  # class 1 = fraud
+                else:
+                    vals = sv[0].tolist()
+                # Normalize to percentage contribution
+                total = sum(abs(v) for v in vals) or 1
+                for i, (name, val) in enumerate(zip(feature_names, vals)):
+                    shap_values.append({
+                        'feature': name,
+                        'value': round(features[i], 4),
+                        'shap': round(val, 6),
+                        'contribution_pct': round(abs(val) / total * 100, 1),
+                        'direction': 'risk' if val > 0 else 'safe'
+                    })
+                shap_values.sort(key=lambda x: abs(x['shap']), reverse=True)
+                method = 'SHAP TreeExplainer (XGBoost)'
+            except ImportError:
+                # SHAP not installed — compute rule-based approximations
+                method = 'Rule-based Approximation (install shap for exact values)'
+                shap_values = _rule_based_shap(features, feature_names, amount, old_bal_orig,
+                                               tx_type, orig_zero, dest_zero, amount_ratio)
+        else:
+            method = 'Rule-based Approximation (XGBoost model not loaded)'
+            shap_values = _rule_based_shap(features, feature_names, amount, old_bal_orig,
+                                           tx_type, orig_zero, dest_zero, amount_ratio)
+
+        return jsonify({
+            'success': True,
+            'method': method,
+            'shap_values': shap_values[:8],  # top 8 features
+            'base_value': 0.05,
+            'predicted_prob': float(paysim_model.predict_proba(
+                paysim_scaler.transform([features]))[0][1]) if (paysim_model and paysim_scaler) else 0.0,
+            'note': 'Positive SHAP = increases fraud risk. Negative SHAP = reduces fraud risk.'
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+def _rule_based_shap(features, feature_names, amount, old_bal_orig,
+                     tx_type, orig_zero, dest_zero, amount_ratio):
+    """Fallback rule-based feature importance when SHAP library is not installed."""
+    rules = [
+        (amount_ratio * 0.35,        'Amount-to-Balance Ratio'),
+        (orig_zero * 0.25,           'Sender Account Drained'),
+        (dest_zero * 0.20,           'New Receiver Account'),
+        (0.10 if tx_type in [1, 2] else -0.05, 'Transaction Type'),
+        (min(amount / 500000, 0.15), 'Amount (₹)'),
+        (-0.05 if old_bal_orig > 10000 else 0.05, 'Sender Opening Balance'),
+        (0.03,                       'Transaction Step'),
+        (-0.02,                      'Receiver Opening Balance'),
+    ]
+    total = sum(abs(v) for v, _ in rules) or 1
+    result = []
+    for i, (val, name) in enumerate(rules):
+        result.append({
+            'feature': name,
+            'value': features[i] if i < len(features) else 0,
+            'shap': round(val, 4),
+            'contribution_pct': round(abs(val) / total * 100, 1),
+            'direction': 'risk' if val > 0 else 'safe'
+        })
+    result.sort(key=lambda x: abs(x['shap']), reverse=True)
+    return result
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 🕐  RISK HISTORY  —  Audit Trail of all assessments
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# In-memory risk history (per session). In production, use a database.
+RISK_HISTORY: list[dict] = []
+
+@app.route('/api/risk_history', methods=['GET'])
+def get_risk_history():
+    """Return recent risk assessment history for the dashboard timeline."""
+    return jsonify({'success': True, 'history': RISK_HISTORY[-20:][::-1]})
+
+
+@app.route('/api/risk_history/add', methods=['POST'])
+def add_risk_history():
+    """Append a new risk event to the session audit trail."""
+    try:
+        data = request.get_json(silent=True) or {}
+        import datetime as _dt
+        event = {
+            'id': f"EVT-{os.urandom(3).hex().upper()}",
+            'timestamp': _dt.datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'type': str(data.get('type', 'assessment'))[:30],
+            'label': str(data.get('label', 'Risk Assessment'))[:80],
+            'risk_score': int(max(0, min(100, data.get('risk_score', 0)))),
+            'verdict': str(data.get('verdict', 'Unknown'))[:50],
+            'details': str(data.get('details', ''))[:200],
+        }
+        RISK_HISTORY.append(event)
+        if len(RISK_HISTORY) > 50:
+            RISK_HISTORY.pop(0)
+        return jsonify({'success': True, 'event': event})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 if __name__ == '__main__':
     print("[*] Dashboard starting on http://localhost:5000")
     app.run(debug=True, port=5000, threaded=True, use_reloader=False)
+

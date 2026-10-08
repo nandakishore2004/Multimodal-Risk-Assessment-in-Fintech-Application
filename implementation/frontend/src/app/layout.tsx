@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import AIAssistant from "@/components/AIAssistant";
 
 export const metadata: Metadata = {
   title: "FinPay — Smart & Secure Financial Platform",
@@ -18,7 +19,10 @@ export default function RootLayout({
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1" />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        {children}
+        <AIAssistant />
+      </body>
     </html>
   );
 }

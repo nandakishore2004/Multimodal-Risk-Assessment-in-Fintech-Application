@@ -109,6 +109,16 @@ export interface LoanResponse {
     financial_risk: number;
     repayment_sequence_risk: number;
     reference_network_risk: number;
+    asset_summary?: {
+      net_asset_value: number;
+      collateral_ratio: number;
+      asset_risk_reduction: number;
+      property_value: number;
+      gold_value: number;
+      savings_fd: number;
+      vehicle_value: number;
+      investments: number;
+    };
   };
   multimodal_assessment: AssessmentResult;
   factors: string[];

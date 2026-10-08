@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Lock, X, Delete, ShieldCheck } from "lucide-react";
 
@@ -32,7 +32,8 @@ export default function PinModal({
   const [success, setSuccess] = useState(false);
   const maxLen = correctPin.length;
 
-  // Reset on open
+  /* eslint-disable react-hooks/set-state-in-effect */
+  // Reset state when modal opens (legitimate modal-reset pattern)
   useEffect(() => {
     if (isOpen) {
       setPin("");
@@ -42,7 +43,7 @@ export default function PinModal({
     }
   }, [isOpen]);
 
-  // Auto-verify when PIN is full length
+  // Auto-verify when PIN reaches full length
   useEffect(() => {
     if (pin.length === maxLen) {
       if (pin === correctPin) {
@@ -63,6 +64,7 @@ export default function PinModal({
       }
     }
   }, [pin, correctPin, maxLen, onSuccess]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handleDigit = (d: string) => {
     if (pin.length < maxLen && !success) {

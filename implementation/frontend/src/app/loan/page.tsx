@@ -87,6 +87,73 @@ function StepProgress({ current, kycDone, formDone, voiceDone }: { current: Step
   );
 }
 
+// ── Risk keywords for voice declaration analysis ─────────────────────────────
+const LOAN_RISK_KEYWORDS_EN = [
+  // Core scam triggers
+  'urgent', 'immediately', 'right now', 'emergency',
+  // Credential theft
+  'password', 'otp', 'pin', 'cvv', 'verify', 'verification',
+  // Account actions
+  'block', 'unblock', 'freeze', 'suspend', 'locked',
+  // Fraud bait
+  'hacked', 'stolen', 'scam', 'fraud', 'phishing',
+  // Account / loan terms that indicate coercion (removed generic words)
+  'claim', 'prize', 'reward',
+  // Coercion / deadline
+  'expire', 'expiry', 'deadline', 'cancel',
+];
+const LOAN_RISK_KEYWORDS_TE = [
+  'అర్జెంట్', 'అర్జెంటుగా', 'అర్జెంటు', 'అర్జెంట్గా', 'వెంటనే', 'అత్యవసరంగా', 'ఎమర్జెన్సీ',
+  'పాస్వర్డ్', 'పాస్‌వర్డ్', 'ఓటీపీ',
+  'బ్లాక్', 'అన్‌బ్లాక్',
+  'బదిలీ',
+  'హ్యాక్', 'దొంగతనం', 'వెరిఫై',
+  'పిన్', 'గెలుపు', 'రివార్డ్', 'రద్దు', 'గడువు',
+  'ముందస్తు ఫీజు', 'ప్రాసెసింగ్ ఫీజు', 'ఆఫర్',
+];
+
+function getLoanRiskKeywords(text: string): string[] {
+  const lower = text.toLowerCase();
+  const enMatches = LOAN_RISK_KEYWORDS_EN.filter(kw => lower.includes(kw));
+  const teMatches = LOAN_RISK_KEYWORDS_TE.filter(kw => text.includes(kw));
+  return [...new Set([...enMatches, ...teMatches])];
+}
+
+function LoanHighlightedTranscript({ text }: { text: string }) {
+  if (!text) return null;
+  const allKw = [...LOAN_RISK_KEYWORDS_EN, ...LOAN_RISK_KEYWORDS_TE];
+  const sorted = [...allKw].sort((a, b) => b.length - a.length);
+  const escaped = sorted.map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const regex = new RegExp(`(${escaped.join('|')})`, 'gi');
+  const parts = text.split(regex);
+  return (
+    <>
+      {parts.map((part, i) => {
+        const isRisk = allKw.some(kw => part.toLowerCase() === kw.toLowerCase() || part === kw);
+        if (isRisk) {
+          return (
+            <mark
+              key={i}
+              style={{
+                background: 'rgba(239,68,68,0.18)',
+                color: '#ef4444',
+                borderRadius: 4,
+                padding: '1px 4px',
+                fontWeight: 800,
+                border: '1px solid rgba(239,68,68,0.4)',
+                fontSize: 'inherit',
+              }}
+            >
+              ⚠ {part}
+            </mark>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 export default function LoanPage() {
   const user = auth.load();
@@ -139,6 +206,28 @@ export default function LoanPage() {
   });
   const setF = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }));
 
+  // ── Assets state ───────────────────────────────────────────────
+  const [showAssets, setShowAssets] = useState(false);
+  const [assets, setAssets] = useState({
+    property_value: "",
+    savings_fd: "",
+    vehicle_value: "",
+    investments: "",
+  });
+  const setA = (k: string, v: string) => setAssets(a => ({ ...a, [k]: v }));
+
+  // Live net asset value
+  const liveAssets = useMemo(() => {
+    const property  = parseFloat(assets.property_value) || 0;
+    const savings   = parseFloat(assets.savings_fd)     || 0;
+    const vehicle   = parseFloat(assets.vehicle_value)  || 0;
+    const invest    = parseFloat(assets.investments)    || 0;
+    const total     = property + savings + vehicle + invest;
+    const loan      = parseFloat(form.loan_amount) || 0;
+    const ratio     = loan > 0 ? total / loan : 0;
+    return { property, savings, vehicle, invest, total, ratio };
+  }, [assets, form.loan_amount]);
+
   // ── Live DTI calculator ───────────────────────────────────────────────────
   const liveCalc = useMemo(() => {
     const income = parseFloat(form.monthly_income) || 0;
@@ -190,6 +279,14 @@ export default function LoanPage() {
       reference_risk: "10",
       purpose: "Home renovation",
     }));
+    // Also fill demo assets
+    setAssets({
+      property_value: "2500000",
+      savings_fd: "200000",
+      vehicle_value: "300000",
+      investments: "150000",
+    });
+    setShowAssets(true);
   };
 
   const step1Valid = !!(
@@ -257,28 +354,42 @@ export default function LoanPage() {
       setVoiceError("Please record or type your voice declaration first.");
       return;
     }
-    setVoiceLoading(true); setVoiceError("");
+    setVoiceLoading(true); setVoiceError(""); setVoiceResult(null);
 
     // ── Step 1: Instant client-side NLP (< 5ms) ──────────────────────────────
-    const suspiciousWords = ["urgent","password","otp","block","unblock","hacked","stolen","money","transfer","account"];
-    const tl = voiceTranscript.toLowerCase();
-    const matched = suspiciousWords.filter(w => tl.includes(w));
+    const matched = getLoanRiskKeywords(voiceTranscript);
     const isSuspicious = matched.length > 0;
+    const clientFraudProb = isSuspicious
+      ? Math.min(0.95, 0.55 + matched.length * 0.10)
+      : 0.08;
     const instantResult: VoiceResponse = {
       success: true,
       final_transcript: voiceTranscript,
-      fraud_prob: isSuspicious ? Math.min(0.95, 0.55 + matched.length * 0.10) : 0.08,
+      fraud_prob: clientFraudProb,
       prediction: isSuspicious ? "High-Risk Speech Pattern" : "Normal Speech",
       matched_keywords: matched,
-      model_used: "NLP (instant)",
+      model_used: "NLP Regex",
     };
     setVoiceResult(instantResult); // Show immediately!
     setVoiceLoading(false);
 
-    // ── Step 2: Backend confirmation in background (updates if different) ─────
+    // ── Step 2: Backend call — merge results, never downgrade risk ─────────
     try {
       const res = await api.analyzeVoice(null, voiceTranscript, voiceLang);
-      setVoiceResult(res); // Silently update with backend result
+
+      // Merge: combine matched keywords from both sources
+      const allMatched = [...new Set([...matched, ...(res.matched_keywords ?? [])])];
+      // Take the higher fraud probability (never let backend lower the client risk)
+      const mergedProb = Math.max(clientFraudProb, res.fraud_prob ?? 0);
+      const mergedSuspicious = allMatched.length > 0 || mergedProb > 0.5;
+
+      setVoiceResult({
+        ...res,
+        fraud_prob: mergedProb,
+        prediction: mergedSuspicious ? "High-Risk Speech Pattern" : res.prediction,
+        matched_keywords: allMatched,
+        model_used: res.model_used ?? "NLP Regex",
+      });
     } catch {
       // Backend failed — keep instant result, no error shown
     }
@@ -306,6 +417,11 @@ export default function LoanPage() {
         voice_transcript: voiceTranscript,
         has_kyc: true,
         kyc_fraud_prob: kycResult!.fraud_prob,
+        // Assets
+        property_value: parseFloat(assets.property_value) || 0,
+        savings_fd:     parseFloat(assets.savings_fd)     || 0,
+        vehicle_value:  parseFloat(assets.vehicle_value)  || 0,
+        investments:    parseFloat(assets.investments)    || 0,
       } as Record<string, unknown>);
       setResult(res);
     } catch (e) { setError(e instanceof Error ? e.message : "Assessment failed"); }
@@ -325,13 +441,20 @@ export default function LoanPage() {
     declined: { color: "var(--danger)",  bg: "rgba(239,68,68,0.1)",  border: "rgba(239,68,68,0.3)",  icon: XCircle,      label: "NOT RECOMMENDED ✗" },
   };
 
+  // Bug 3 Fix: If voice risk is high, override approved → review
+  const getEffectiveDecisionCode = (res: LoanResponse): "approved" | "review" | "declined" => {
+    const voiceHighRisk = voiceResult && voiceResult.fraud_prob > 0.5;
+    if (voiceHighRisk && res.decision_code === "approved") return "review";
+    return res.decision_code;
+  };
+
   // ── Combined score calculation (frontend preview) ─────────────────────────
   const getCombinedRisk = () => {
     if (!result) return null;
-    const fin = result.overall_risk;
+    const fin = result.financial_summary.financial_risk;
     const kyc = kycResult ? Math.round(kycResult.fraud_prob * 100) : 0;
     const voc = voiceResult ? Math.round(voiceResult.fraud_prob * 100) : 0;
-    return { financial: fin, kyc, voice: voc, combined: Math.round(fin * 0.5 + kyc * 0.3 + voc * 0.2) };
+    return { financial: fin, kyc, voice: voc, combined: result.overall_risk };
   };
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -577,6 +700,100 @@ export default function LoanPage() {
                     <label className="input-label">Loan Purpose</label>
                     <input className="input-field" value={form.purpose} onChange={e => setF("purpose", e.target.value)} placeholder="Home renovation, medical, education…" />
                   </div>
+
+                  {/* ── ASSET DECLARATION ── */}
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <button
+                      type="button"
+                      onClick={() => setShowAssets(v => !v)}
+                      style={{
+                        width: "100%", padding: "12px 16px", borderRadius: 12,
+                        background: showAssets ? "rgba(79,143,255,0.12)" : "var(--bg-secondary)",
+                        border: `1.5px solid ${showAssets ? "var(--accent)" : "var(--border-color)"}`,
+                        cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "space-between",
+                        transition: "all 0.2s",
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", display: "flex", alignItems: "center", gap: 8 }}>
+                        🏠 Asset Declaration
+                        <span style={{ fontSize: 11, fontWeight: 500, color: "var(--text-muted)" }}>(Optional — improves approval odds)</span>
+                      </span>
+                      <span style={{ fontSize: 12, color: "var(--accent)", fontWeight: 700 }}>
+                        {showAssets ? "▲ Hide" : "▼ Add Assets"}
+                      </span>
+                    </button>
+
+                    {showAssets && (
+                      <div style={{ marginTop: 12, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                        <div>
+                          <label className="input-label">🏠 Property Value (₹)</label>
+                          <input className="input-field" type="number" min="0" value={assets.property_value}
+                            onChange={e => setA("property_value", e.target.value)} placeholder="e.g. 2500000" />
+                        </div>
+                        <div>
+                          <label className="input-label">🏦 Savings / FD (₹)</label>
+                          <input className="input-field" type="number" min="0" value={assets.savings_fd}
+                            onChange={e => setA("savings_fd", e.target.value)} placeholder="e.g. 200000" />
+                        </div>
+                        <div>
+                          <label className="input-label">🚗 Vehicle (₹ resale)</label>
+                          <input className="input-field" type="number" min="0" value={assets.vehicle_value}
+                            onChange={e => setA("vehicle_value", e.target.value)} placeholder="e.g. 300000" />
+                        </div>
+                        <div style={{ gridColumn: "1 / -1" }}>
+                          <label className="input-label">📊 Investments (Stocks / MF / PPF) (₹)</label>
+                          <input className="input-field" type="number" min="0" value={assets.investments}
+                            onChange={e => setA("investments", e.target.value)} placeholder="e.g. 150000" />
+                        </div>
+
+                        {/* Live Asset Preview */}
+                        {liveAssets.total > 0 && (
+                          <div style={{
+                            gridColumn: "1 / -1", padding: "14px 18px", borderRadius: 12,
+                            background: liveAssets.ratio >= 1 ? "rgba(0,232,135,0.08)" : "rgba(79,143,255,0.08)",
+                            border: `1.5px solid ${liveAssets.ratio >= 1 ? "var(--success)" : "var(--accent)"}`,
+                          }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                              <div>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Total Net Assets</div>
+                                <div style={{ fontSize: 22, fontWeight: 900, color: "var(--success)" }}>
+                                  ₹{Math.round(liveAssets.total).toLocaleString()}
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 2 }}>
+                                  Property ₹{Math.round(liveAssets.property).toLocaleString()} &nbsp;|
+                                  FD ₹{Math.round(liveAssets.savings).toLocaleString()}
+                                </div>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Collateral Ratio</div>
+                                <div style={{ fontSize: 22, fontWeight: 900,
+                                  color: liveAssets.ratio >= 1 ? "var(--success)" : liveAssets.ratio >= 0.5 ? "#fbbf24" : "var(--text-secondary)" }}>
+                                  {liveAssets.ratio.toFixed(2)}x
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
+                                  {liveAssets.ratio >= 1 ? "🟢 Full collateral coverage!"
+                                   : liveAssets.ratio >= 0.5 ? "🟡 Partial coverage"
+                                   : "🔴 Low collateral"}
+                                </div>
+                              </div>
+                            </div>
+                            <div style={{ marginTop: 10, height: 6, borderRadius: 99, background: "var(--bg-secondary)", overflow: "hidden" }}>
+                              <div style={{
+                                height: "100%", borderRadius: 99,
+                                width: `${Math.min(100, liveAssets.ratio * 100)}%`,
+                                background: liveAssets.ratio >= 1 ? "var(--success)" : liveAssets.ratio >= 0.5 ? "#fbbf24" : "var(--accent)",
+                                transition: "width 0.4s ease",
+                              }} />
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 6, fontWeight: 600 }}>
+                              ⚡ Assets can reduce financial risk by up to 20 points & boost approved amount!
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ gridColumn: "1 / -1" }}>
                     <label className="input-label">Reference Network Risk (0–100)</label>
                     <input className="input-field" type="range" min="0" max="100" value={form.reference_risk} onChange={e => setF("reference_risk", e.target.value)} style={{ accentColor: "var(--accent)" }} />
@@ -679,7 +896,77 @@ export default function LoanPage() {
                 </label>
                 <textarea id="voice-transcript-s2" className="input-field" value={voiceTranscript} onChange={e => setVoiceTranscript(e.target.value)}
                   rows={4} placeholder={voiceLang === "te" ? "మీరు మాట్లాడిన మాటలు ఇక్కడ కనిపిస్తాయి… లేక ఇక్కడ టైప్ చేయండి…" : "Your words will appear here... or type your declaration..."}
-                  style={{ resize: "vertical", lineHeight: 1.6, marginBottom: 14, borderColor: recState === "recording" ? "var(--accent)" : undefined }} />
+                  style={{
+                    resize: "vertical",
+                    lineHeight: 1.6,
+                    marginBottom: 8,
+                    borderColor:
+                      recState === "recording"
+                        ? "var(--accent)"
+                        : getLoanRiskKeywords(voiceTranscript).length > 0
+                        ? "var(--danger)"
+                        : undefined,
+                    boxShadow:
+                      getLoanRiskKeywords(voiceTranscript).length > 0
+                        ? "0 0 0 2px rgba(239,68,68,0.22)"
+                        : undefined,
+                    transition: "border-color 0.2s, box-shadow 0.2s",
+                  }} />
+
+                {/* Live keyword highlight preview */}
+                {voiceTranscript && (
+                  <div style={{
+                    marginBottom: 8,
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    background: "var(--bg-secondary)",
+                    border: `1px solid ${getLoanRiskKeywords(voiceTranscript).length > 0 ? "rgba(239,68,68,0.35)" : "var(--border-color)"}`,
+                    fontSize: 14,
+                    lineHeight: 1.8,
+                    color: "var(--text-primary)",
+                    wordBreak: "break-word",
+                    whiteSpace: "pre-wrap",
+                    transition: "border-color 0.2s",
+                  }}>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 4, textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 700 }}>
+                      🔍 Live Highlight Preview
+                    </div>
+                    <LoanHighlightedTranscript text={voiceTranscript} />
+                  </div>
+                )}
+
+                {/* Pulsing URGENT risk banner */}
+                {voiceTranscript && getLoanRiskKeywords(voiceTranscript).length > 0 && (
+                  <div style={{
+                    marginBottom: 12,
+                    padding: "10px 14px",
+                    borderRadius: 10,
+                    background: "rgba(239,68,68,0.10)",
+                    border: "1.5px solid rgba(239,68,68,0.5)",
+                    color: "var(--danger)",
+                    fontSize: 12,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    gap: 8,
+                    animation: "pulse-red 1.8s ease-in-out infinite",
+                  }}>
+                    <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+                    <strong style={{ fontSize: 12 }}>⚡ RISK DETECTED:</strong>
+                    {getLoanRiskKeywords(voiceTranscript).map((kw, i) => (
+                      <span key={i} style={{
+                        padding: "2px 8px",
+                        borderRadius: 99,
+                        background: "rgba(239,68,68,0.18)",
+                        border: "1px solid rgba(239,68,68,0.4)",
+                        fontWeight: 700,
+                        fontSize: 11,
+                      }}>
+                        ⚠ {kw}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 {(voiceTranscript.trim() || audioBlob) && !voiceResult && (
                   <button type="button" id="voice-analyze-s2" className="btn-primary" onClick={analyzeVoice} disabled={voiceLoading}
@@ -698,14 +985,30 @@ export default function LoanPage() {
                 {voiceResult && (
                   <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                     style={{ padding: "16px 18px", borderRadius: 12, marginBottom: 20, background: voiceResult.fraud_prob <= 0.5 ? "rgba(16,185,129,0.1)" : "rgba(239,68,68,0.1)", border: `1px solid ${voiceResult.fraud_prob <= 0.5 ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)"}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10 }}>
-                      {voiceResult.fraud_prob <= 0.5 ? <CheckCircle size={28} color="var(--success)" /> : <AlertTriangle size={28} color="var(--danger)" />}
-                      <div>
-                        <p style={{ fontWeight: 800, fontSize: 15, color: voiceResult.fraud_prob <= 0.5 ? "var(--success)" : "var(--danger)" }}>
-                          {voiceResult.prediction}
-                        </p>
-                        <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Model: {voiceResult.model_used}</p>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        {voiceResult.fraud_prob <= 0.5 ? <CheckCircle size={28} color="var(--success)" /> : <AlertTriangle size={28} color="var(--danger)" />}
+                        <div>
+                          <p style={{ fontWeight: 800, fontSize: 15, color: voiceResult.fraud_prob <= 0.5 ? "var(--success)" : "var(--danger)" }}>
+                            {voiceResult.prediction}
+                          </p>
+                          <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Model: {voiceResult.model_used}</p>
+                        </div>
                       </div>
+                      {/* Re-analyze button */}
+                      <button
+                        type="button"
+                        onClick={analyzeVoice}
+                        disabled={voiceLoading}
+                        style={{
+                          display: "flex", alignItems: "center", gap: 5,
+                          padding: "5px 12px", borderRadius: 8, fontSize: 11, fontWeight: 700,
+                          background: "var(--bg-secondary)", border: "1px solid var(--border-color)",
+                          color: "var(--text-secondary)", cursor: "pointer",
+                        }}
+                      >
+                        <RefreshCw size={12} /> Re-analyze
+                      </button>
                     </div>
                     <ScoreBar
                       label="Voice Fraud Risk"
@@ -759,7 +1062,8 @@ export default function LoanPage() {
               )}
 
               {result && (() => {
-                const cfg = DECISION_CONFIG[result.decision_code];
+                const effectiveCode = getEffectiveDecisionCode(result);
+                const cfg = DECISION_CONFIG[effectiveCode];
                 const Icon = cfg.icon;
                 const scores = getCombinedRisk()!;
                 const kycColor = kycResult && kycResult.fraud_prob <= 0.5 ? "var(--success)" : "var(--danger)";
@@ -802,6 +1106,33 @@ export default function LoanPage() {
                         </div>
                       </div>
 
+                      {/* Asset summary (if declared) */}
+                      {result.financial_summary.asset_summary && result.financial_summary.asset_summary.net_asset_value > 0 && (
+                        <div className="glass-card" style={{ padding: 22, background: result.financial_summary.asset_summary.collateral_ratio >= 1 ? "rgba(0,232,135,0.05)" : "rgba(79,143,255,0.05)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+                            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)" }}>🏠 Asset & Collateral Summary</p>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "var(--success)", background: "rgba(16,185,129,0.15)", padding: "2px 8px", borderRadius: 99 }}>
+                              Risk Reduced: -{result.financial_summary.asset_summary.asset_risk_reduction} pts
+                            </span>
+                          </div>
+                          
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                            <div style={{ padding: 12, borderRadius: 8, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
+                              <p style={{ fontSize: 11, color: "var(--text-muted)" }}>Total Net Assets</p>
+                              <p style={{ fontSize: 16, fontWeight: 700, color: "var(--success)", marginTop: 2 }}>
+                                ₹{result.financial_summary.asset_summary.net_asset_value.toLocaleString()}
+                              </p>
+                            </div>
+                            <div style={{ padding: 12, borderRadius: 8, background: "var(--bg-secondary)", border: "1px solid var(--border-color)" }}>
+                              <p style={{ fontSize: 11, color: "var(--text-muted)" }}>Collateral Ratio</p>
+                              <p style={{ fontSize: 16, fontWeight: 700, color: result.financial_summary.asset_summary.collateral_ratio >= 1 ? "var(--success)" : "#fbbf24", marginTop: 2 }}>
+                                {result.financial_summary.asset_summary.collateral_ratio}x
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Multimodal score breakdown */}
                       <div className="glass-card" style={{ padding: 22 }}>
                         <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", marginBottom: 16 }}>
@@ -813,7 +1144,7 @@ export default function LoanPage() {
                         <div style={{ height: 1, background: "var(--border-color)", margin: "14px 0" }} />
                         <ScoreBar label="⚡ Combined Risk Score" value={scores.combined} color={combinedColor} />
                         <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 8, lineHeight: 1.5 }}>
-                          Formula: Financial × 50% + KYC × 30% + Voice × 20%
+                          Combined Risk incorporates financial history (55%), multimodal intent (30%), and reference network (15%).
                         </p>
                       </div>
 
